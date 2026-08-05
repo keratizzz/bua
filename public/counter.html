@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเคาน์เตอร์ - บัวแจ่วฮ้อน</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Prompt', sans-serif; background: #f0f2f5; margin: 0; padding: 0; color: #333; }
+        .navbar { background: #4e73df; padding: 15px 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .navbar h2 { margin: 0; font-size: 1.5rem; }
+        .navbar-right { display: flex; align-items: center; gap: 15px; }
+        .btn-logout { background: #e74a3b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-family: 'Prompt'; font-weight: bold; }
+        
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-modal { background: #fff; padding: 40px 30px; border-radius: 20px; text-align: center; width: 90%; max-width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .login-icon { font-size: 50px; margin-bottom: 10px; color: #4e73df; }
+        .input-group input { width: 100%; padding: 15px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 16px; text-align: center; outline: none; }
+        .login-btn { width: 100%; background-color: #4e73df; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 16px; cursor: pointer; margin-top: 15px; font-family: 'Prompt'; font-weight: bold; }
+        .error-msg { color: #ff3b30; font-size: 13px; margin-top: 10px; display: none; }
+        
+        .tab-menu { display: flex; background: white; padding: 0 20px; overflow-x: auto; white-space: nowrap; border-bottom: 2px solid #ddd; }
+        .tab-btn { padding: 15px 25px; border: none; background: none; font-family: 'Prompt'; font-size: 1.1rem; cursor: pointer; color: #666; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: #4e73df; border-bottom-color: #4e73df; font-weight: 600; }
+        .tab-content { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .tab-content.active { display: block; }
+        
+        .section-title { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .order-card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid #4e73df; }
+        .order-card.drink-card { border-left-color: #f6c23e; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .order-header h3 { margin: 0; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #f0f0f0; padding-bottom: 8px; }
+        
+        .btn-confirm-all { background: #1cc88a; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-family: 'Prompt'; font-size: 1rem; width: 100%; margin-top: 10px; font-weight: bold; }
+        .btn-reject-item { background: #e74a3b; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-left: 8px; }
+        .btn-serve-item { background: #f6c23e; color: #333; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: 'Prompt'; }
+        
+        .billing-container { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+        .tables-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; min-width: 300px; }
+        .table-btn { background: #fffdf5; border: 2px solid #f6c23e; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; font-size: 1.2rem; font-weight: bold; color: #e74a3b; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .table-btn:hover { background: #fff8e1; transform: translateY(-2px); }
+        .bill-panel { width: 100%; max-width: 400px; background: white; padding: 20px; border-radius: 10px; position: sticky; top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .bill-total { font-size: 1.5rem; color: #e74a3b; text-align: right; margin: 20px 0; font-weight: bold; }
+        .payment-select { width: 100%; padding: 10px; margin-bottom: 15px; font-family: 'Prompt'; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; }
+        .btn-checkout { background: #4e73df; color: white; border: none; padding: 15px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 1.1rem; font-weight: bold; font-family: 'Prompt'; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; min-width: 700px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #4e73df; color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- ระบบล็อกอิน -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-modal">
+            <div class="login-icon"><i class="fas fa-desktop"></i></div>
+            <h2>Counter Login</h2>
+            <div class="input-group"><input type="password" id="page-password" placeholder="ใส่รหัสผ่าน..." /></div>
+            <p id="login-error" class="error-msg">รหัสไม่ถูกต้อง</p>
+            <button onclick="checkPassword()" class="login-btn">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <!-- ระบบ Popup ยืนยัน -->
+    <div id="confirm-overlay" class="login-overlay" style="display: none; z-index: 10000;">
+        <div class="login-modal" style="max-width: 350px;">
+            <div class="login-icon" style="color: #f6c23e; font-size: 60px;"><i class="fas fa-exclamation-circle"></i></div>
+            <h2 id="confirm-title" style="margin-top: 10px; color: #333;">ยืนยัน</h2>
+            <p id="confirm-message" style="color: #666; font-size: 1.1rem; margin-bottom: 25px;">ข้อความ...</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button onclick="closeConfirm()" style="background: #e74a3b; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-size: 1rem; flex: 1;">ยกเลิก</button>
+                <button id="btn-confirm-ok" style="background: #1cc88a; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-size: 1rem; flex: 1;">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- แถบด้านบน -->
+    <div class="navbar">
+        <h2><i class="fas fa-desktop"></i> บัวแจ่วฮ้อน</h2>
+        <div class="navbar-right">
+            <span>แคชเชียร์</span>
+            <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> ออก</button>
+        </div>
+    </div>
+
+    <!-- เมนู 3 แท็บ -->
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="switchTab('active-orders')"><i class="fas fa-clipboard-list"></i> กำลังดำเนินการ</button>
+        <button class="tab-btn" onclick="switchTab('billing')"><i class="fas fa-cash-register"></i> คิดเงิน</button>
+        <button class="tab-btn" onclick="switchTab('history')"><i class="fas fa-history"></i> ประวัติ</button>
+    </div>
+
+    <!-- แท็บ 1: กำลังดำเนินการ -->
+    <div id="active-orders" class="tab-content active">
+        <h3 class="section-title" style="color: #4e73df;"><i class="fas fa-bell"></i> ออเดอร์ใหม่</h3>
+        <div id="pending-container" style="margin-bottom: 40px;"></div>
+        <h3 class="section-title" style="color: #f6c23e;"><i class="fas fa-mug-hot"></i> เครื่องดื่ม</h3>
+        <div id="drinks-container"></div>
+    </div>
+    
+    <!-- แท็บ 2: คิดเงิน -->
+    <div id="billing" class="tab-content">
+        <div class="billing-container">
+            <div class="tables-grid" id="tables-grid"></div>
+            
+            <div class="bill-panel" id="bill-panel" style="display: none;">
+                <h3 id="bill-table-title" style="margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px;">บิลโต๊ะ: -</h3>
+                
+                <div style="display: flex; gap: 5px; margin-bottom: 15px; background: #f8f9fc; padding: 10px; border-radius: 8px;">
+                    <input type="text" id="custom-name" placeholder="ชื่อรายการ..." style="flex: 2; min-width: 0; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Prompt';">
+                    <input type="number" id="custom-price" placeholder="ราคา" style="flex: 1; min-width: 0; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Prompt';">
+                    <input type="number" id="custom-qty" placeholder="จำนวน" value="1" style="width: 50px; min-width: 40px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Prompt'; text-align: center;">
+                    <button onclick="addCustomItem()" style="background: #1cc88a; color: white; border: none; border-radius: 4px; padding: 0 12px; cursor: pointer;" title="เพิ่มรายการ"><i class="fas fa-plus"></i></button>
+                </div>
+
+                <div id="bill-items-list" style="max-height: 300px; overflow-y: auto;"></div>
+                <div class="bill-total">ยอดรวม: <span id="bill-grand-total">0</span>.-</div>
+                
+                <select id="payment-method" class="payment-select">
+                    <option value="เงินสด">💵 เงินสด</option>
+                    <option value="เงินโอน">📱 เงินโอน</option>
+                </select>
+                
+                <!-- ปุ่มปริ้นและปุ่มปิดโต๊ะ -->
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn-checkout" style="background: #858796; flex: 1;" onclick="printReceipt()">
+                        <i class="fas fa-print"></i> พิมพ์ใบเสร็จ
+                    </button>
+                    <button class="btn-checkout" style="flex: 2;" onclick="processCheckout()">
+                        <i class="fas fa-check-circle"></i> ยืนยันปิดโต๊ะ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- แท็บ 3: ประวัติ -->
+    <div id="history" class="tab-content">
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>เวลา</th>
+                        <th>ID</th>
+                        <th>โต๊ะ</th>
+                        <th>รายการ</th>
+                        <th>ยอดรวม</th>
+                        <th>ชำระโดย</th>
+                        <th style="text-align: center;">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+    <!-- 🔊 เพิ่มแท็ก Audio สำหรับเสียงเตือน (loop วนซ้ำ) -->
+    <audio id="alert-sound" src="/bell.mp3" loop preload="auto"></audio>
+    <script>
+        const COUNTER_PASSWORD = "31102015";
+        const PAGE_NAME = "is_counter_logged_in";
+        const socket = io();
+        let currentCheckoutTable = null;
+        let currentBillData = null; 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem(PAGE_NAME) === "true") document.getElementById("login-overlay").style.display = "none";
+            document.getElementById("page-password").addEventListener("keypress", e => { if (e.key === "Enter") checkPassword(); });
+            loadActiveOrders();
+        });
+
+        function checkPassword() {
+            if (document.getElementById("page-password").value === COUNTER_PASSWORD) {
+                localStorage.setItem(PAGE_NAME, "true");
+                document.getElementById("login-overlay").style.display = "none";
+            } else document.getElementById("login-error").style.display = "block";
+        }
+        
+        function logout() { localStorage.removeItem(PAGE_NAME); location.reload(); }
+
+        // ปรับปรุงการสลับแท็บให้ปลอดภัยขึ้น
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            const activeBtn = document.querySelector(`.tab-btn[onclick*="'${tabId}'"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if(tabId === 'active-orders') loadActiveOrders();
+            if(tabId === 'history') loadHistory();
+            if(tabId === 'billing') socket.emit('request_active_tables'); 
+        }
+
+        // ==========================================
+        // ดึงและแสดงออเดอร์ใหม่ / เครื่องดื่ม
+        // ==========================================
+     // ==========================================
+        // ดึงและแสดงออเดอร์ใหม่ / เครื่องดื่ม
+        // ==========================================
+        async function loadActiveOrders() {
+            try {
+                const resPending = await fetch('/api/orders/pending');
+                const pendingOrders = await resPending.json();
+                renderPendingOrders(pendingOrders);
+
+                const resDrinks = await fetch('/api/orders/drinks');
+                const drinksOrders = await resDrinks.json();
+                renderDrinksOrders(drinksOrders);
+            } catch (err) { console.error("Error loading active orders:", err); }
+        }
+
+        function renderPendingOrders(orders) {
+            try {
+                const container = document.getElementById('pending-container');
+                const alertSound = document.getElementById('alert-sound'); // ดึงกล่องเสียงมา
+
+                // 🛑 ถ้าไม่มีออเดอร์ใหม่ ให้ซ่อนกล่องและปิดเสียง
+                if (!orders || orders.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:#a5b0c4;">ไม่มีออเดอร์ใหม่รอยืนยัน</div>';
+                    if (alertSound) { 
+                        alertSound.pause(); 
+                        alertSound.currentTime = 0; 
+                    }
+                    return;
+                }
+
+                // 📦 จัดกลุ่มออเดอร์ตามโต๊ะ
+                const grouped = {};
+                orders.forEach(o => { if(!grouped[o.table_number]) grouped[o.table_number] = []; grouped[o.table_number].push(o); });
+
+                // 🎨 วาดหน้าจอออเดอร์ (วาดให้เสร็จก่อนเปิดเสียง)
+                container.innerHTML = Object.keys(grouped).map(tableNum => {
+                    const items = grouped[tableNum];
+                    const itemsHTML = items.map(i => {
+                        const isDrink = i.category === 'เครื่องดื่ม';
+                        const icon = isDrink ? '<i class="fas fa-coffee" style="color:#f6c23e;"></i>' : '<i class="fas fa-utensils" style="color:#4e73df;"></i>';
+                        return `
+                        <div class="item-row">
+                            <div>
+                                ${icon} <b>${i.menu_name}</b> <span style="background:#e74a3b; color:white; padding:2px 8px; border-radius:10px; font-size: 0.9rem;">x${i.qty || 1}</span>
+                                <br><small style="color:#888; padding-left: 20px;">${i.addons || ''}</small>
+                            </div>
+                            <button class="btn-reject-item" onclick="rejectItem(${i.id})" title="ยกเลิกรายการนี้"><i class="fas fa-trash"></i></button>
+                        </div>`;
+                    }).join('');
+
+                    return `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <h3 style="color:#4e73df;">โต๊ะ ${tableNum}</h3>
+                            <span>${items.length} รายการ</span>
+                        </div>
+                        ${itemsHTML}
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn-confirm-all" style="flex: 2; margin-top: 0;" onclick="confirmTable('${tableNum}')">
+                                <i class="fas fa-check-circle"></i> ยืนยันรับออเดอร์
+                            </button>
+                            <button style="flex: 1; background: #e74a3b; color: white; border: none; border-radius: 6px; font-family: 'Prompt'; font-weight: bold; cursor: pointer; padding: 12px 10px;" onclick="rejectTableItems('${tableNum}')">
+                                <i class="fas fa-times-circle"></i> ยกเลิกทั้งหมด
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                // 🔔 เมื่อวาดหน้าจอเสร็จแล้ว ค่อยสั่งเล่นเสียงเตือน
+                if (alertSound && alertSound.paused) {
+                    let playPromise = alertSound.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(e => console.log("เบราว์เซอร์บล็อกการเล่นเสียงอัตโนมัติ รอผู้ใช้คลิกหน้าจอ:", e));
+                    }
+                }
+
+            } catch (error) {
+                console.error("เกิดข้อผิดพลาดในการโหลดออเดอร์:", error);
+            }
+        }
+
+        function renderDrinksOrders(orders) {
+            const container = document.getElementById('drinks-container');
+            if (!orders || orders.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#a5b0c4;">ไม่มีคิวชงเครื่องดื่ม</div>';
+                return;
+            }
+
+            const grouped = {};
+            orders.forEach(o => { if(!grouped[o.table_number]) grouped[o.table_number] = []; grouped[o.table_number].push(o); });
+
+            container.innerHTML = Object.keys(grouped).map(tableNum => {
+                const items = grouped[tableNum];
+                const itemsHTML = items.map(i => `
+                    <div class="item-row">
+                        <div>
+                            <i class="fas fa-mug-hot" style="color:#f6c23e;"></i> <b>${i.menu_name}</b> (x${i.qty || 1})
+                            <br><small style="color:#888; padding-left: 20px;">${i.addons || ''}</small>
+                        </div>
+                        <button class="btn-serve-item" onclick="serveItem(${i.id})">✅ เสิร์ฟแล้ว</button>
+                    </div>`).join('');
+
+                return `
+                <div class="order-card drink-card">
+                    <div class="order-header">
+                        <h3 style="color:#f6c23e;">คิวเครื่องดื่ม โต๊ะ ${tableNum}</h3>
+                    </div>
+                    ${itemsHTML}
+                </div>`;
+            }).join('');
+        }
+
+        async function confirmTable(tableNum) {
+            await fetch(`/api/orders/confirm-table/${tableNum}`, { method: 'PUT' });
+            loadActiveOrders(); 
+            socket.emit('request_active_tables'); 
+        }
+
+        async function serveItem(id) {
+            await fetch(`/api/orders/serve/${id}`, { method: 'PUT' });
+            loadActiveOrders();
+        }
+
+        function rejectItem(orderId) {
+            openConfirm('ยกเลิกออเดอร์', 'คุณต้องการยกเลิกรายการนี้ใช่หรือไม่?', async () => {
+                await fetch(`/api/orders/reject/${orderId}`, { method: 'PUT' });
+                loadActiveOrders();
+            });
+        }
+
+        // ==========================================
+        // ฟังก์ชันยกเลิกออเดอร์ทั้งหมดของโต๊ะรวดเดียว
+        // ==========================================
+        function rejectTableItems(tableNum) {
+            openConfirm('ยกเลิกออเดอร์รวดเดียว', `คุณต้องการปฏิเสธออเดอร์ทั้งหมดของโต๊ะ ${tableNum} ใช่หรือไม่?`, async () => {
+                try {
+                    // 1. โหลดข้อมูลออเดอร์ที่ค้างอยู่ทั้งหมดเพื่อดึง ID ของโต๊ะที่จะยกเลิก
+                    const res = await fetch('/api/orders/pending');
+                    const orders = await res.json();
+                    const tableOrders = orders.filter(o => o.table_number === tableNum);
+                    
+                    // 2. สั่งยกเลิกทีละ ID พร้อมกัน (Promise.all) ไม่ต้องพึ่ง backend API ใหม่
+                    await Promise.all(tableOrders.map(o => 
+                        fetch(`/api/orders/reject/${o.id}`, { method: 'PUT' })
+                    ));
+                    
+                    // 3. โหลดหน้าใหม่ (ถ้าเคลียร์หมด เสียงจะดับเองอัตโนมัติ)
+                    loadActiveOrders();
+                } catch(err) {
+                    console.error("เกิดข้อผิดพลาดในการยกเลิกรวดเดียว:", err);
+                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+                }
+            });
+        }
+
+        // ==========================================
+        // SOCKET.IO ระบบคิดเงิน
+        // ==========================================
+        socket.on('update_active_tables', (activeTables) => {
+            const grid = document.getElementById('tables-grid');
+            if(!activeTables || activeTables.length === 0) {
+                return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding: 40px; color:#888;">ไม่มีโต๊ะที่กำลังใช้งาน</div>';
+            }
+            grid.innerHTML = activeTables.map(t => `<div class="table-btn" onclick="selectTable('${t}')">โต๊ะ<br><span style="font-size:1.8rem;">${t}</span></div>`).join('');
+        });
+
+        socket.on('new_order_submitted', () => {
+            loadActiveOrders();
+        });
+
+        function selectTable(t) { 
+            currentCheckoutTable = t; 
+            socket.emit('get_bill_details', t); 
+        }
+
+        socket.on('show_bill', (data) => {
+            currentBillData = data; 
+            document.getElementById('bill-panel').style.display = 'block';
+            document.getElementById('bill-table-title').innerText = `บิลโต๊ะ: ${data.table}`;
+            let total = 0;
+            document.getElementById('bill-items-list').innerHTML = data.items.map(i => {
+                const itemTotal = i.price * (i.qty || 1); 
+                total += itemTotal;
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px dashed #eee; padding-bottom: 8px;">
+                        <div style="flex: 1;">${i.menu_name} (x${i.qty || 1})</div>
+                        <div style="font-weight:bold; margin-right: 15px;">${itemTotal}.-</div>
+                        <button onclick="removeBillItem(${i.id})" style="background: #e74a3b; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem;" title="ลบรายการนี้">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>`;
+            }).join('');
+            document.getElementById('bill-grand-total').innerText = total;
+        });
+
+        async function removeBillItem(orderId) {
+            openConfirm('ลบรายการ', 'ต้องการลบรายการนี้ออกจากบิลใช่หรือไม่?', async () => {
+                await fetch(`/api/orders/item/${orderId}`, { method: 'DELETE' });
+                if (currentCheckoutTable) socket.emit('get_bill_details', currentCheckoutTable);
+            });
+        }
+
+        async function addCustomItem() {
+            if(!currentCheckoutTable) return alert("กรุณาเลือกโต๊ะก่อน!");
+            
+            const name = document.getElementById('custom-name').value.trim();
+            const price = document.getElementById('custom-price').value;
+            const qty = document.getElementById('custom-qty').value;
+
+            if(!name || !price) return alert("กรุณากรอกชื่อรายการและราคาให้ครบถ้วน");
+
+            const payload = {
+                table_number: currentCheckoutTable,
+                menu_name: name,
+                price: parseFloat(price),
+                qty: parseInt(qty) || 1
+            };
+
+            await fetch('/api/orders/custom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            document.getElementById('custom-name').value = '';
+            document.getElementById('custom-price').value = '';
+            document.getElementById('custom-qty').value = '1';
+            
+            socket.emit('get_bill_details', currentCheckoutTable);
+        }
+
+        function processCheckout() {
+            if(!currentCheckoutTable) return;
+            const method = document.getElementById('payment-method').value;
+            
+            openConfirm('ยืนยันปิดโต๊ะ', `ยืนยันการรับชำระเงิน โต๊ะ ${currentCheckoutTable} ใช่หรือไม่?`, () => {
+                socket.emit('checkout_table', { tableNum: currentCheckoutTable, paymentMethod: method });
+                document.getElementById('bill-panel').style.display = 'none';
+                currentCheckoutTable = null;
+            });
+        }
+
+        // ==========================================
+        // พิมพ์ใบเสร็จโต๊ะปัจจุบัน
+        // ==========================================
+        function printReceipt() {
+            if (!currentBillData || !currentBillData.items || currentBillData.items.length === 0) {
+                alert("ไม่มีข้อมูลรายการอาหารสำหรับปริ้น!");
+                return;
+            }
+
+            const payMethod = document.getElementById('payment-method').value || 'เงินสด';
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('th-TH');
+            const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            let total = 0;
+
+            const itemsRowsHtml = currentBillData.items.map(i => {
+                const qty = i.qty || 1;
+                const itemTotal = i.price * qty;
+                total += itemTotal;
+                return `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 11px;">
+                        <div style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 5px;">${i.menu_name} (x${qty})</div>
+                        <div style="text-align: right; font-weight: bold; white-space: nowrap;">${itemTotal} บ.</div>
+                    </div>
+                `;
+            }).join('');
+
+            const printWin = window.open('', '_blank', 'width=350,height=500');
+            printWin.document.write(`
+                <!DOCTYPE html>
+                <html lang="th">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>พิมพ์ใบเสร็จ</title>
+                    <style>
+                        @page { margin: 0; }
+                        * { color: #000000 !important; font-family: 'Tahoma', 'Arial', sans-serif; }
+                        body { width: 155px; margin: 0 auto; padding: 4px 2px; box-sizing: border-box; font-size: 11px; line-height: 1.3; }
+                        .dashed-line { border-top: 1px dashed #000; margin: 4px 0; width: 100%; }
+                    </style>
+                </head>
+                <body>
+                    <div style="text-align: center; margin-bottom: 4px;">
+                        <h3 style="margin: 0; font-size: 14px;">บัวแจ่วฮ้อน</h3>
+                        <div style="font-size: 10px;">ใบเสร็จรับเงิน</div>
+                        <div style="font-size: 11px; margin-top: 2px;"><b>โต๊ะ: ${currentBillData.table}</b></div>
+                        <div style="font-size: 9px;">${dateStr} เวลา ${timeStr}</div>
+                    </div>
+                    
+                    <div class="dashed-line"></div>
+                    ${itemsRowsHtml}
+                    <div class="dashed-line"></div>
+                    
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-top: 4px;">
+                        <div>ยอดรวม</div>
+                        <div>${total} บาท</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
+                        <div>ชำระโดย</div>
+                        <div>${payMethod}</div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 10px; font-size: 10px; font-weight: bold;">
+                        🙏 ขอบคุณที่ใช้บริการ 🙏
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.focus();
+                                window.print();
+                                window.close();
+                            }, 800);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWin.document.close();
+        }
+
+        // ==========================================
+        // โหลดประวัติการชำระเงิน
+        // ==========================================
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/orders/history');
+                const historyData = await res.json();
+                const tbody = document.getElementById('history-table-body');
+                
+                if (!historyData || historyData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#888;">ไม่มีประวัติการชำระเงินในวันนี้</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = historyData.map(h => `
+                    <tr>
+                        <td>${new Date(h.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</td>
+                        <td>#${h.id}</td>
+                        <td><b>${h.table_number}</b></td>
+                        <td>${h.item_count || '-'} รายการ</td>
+                        <td style="color: #e74a3b; font-weight: bold;">${h.total}.-</td>
+                        <td>
+                            <span style="background: ${h.payment_method === 'เงินสด' ? '#1cc88a' : '#4e73df'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem;">
+                                ${h.payment_method}
+                            </span>
+                        </td>
+                        <td style="text-align: center;">
+                            <button onclick="printOldReceipt('${h.id}', '${h.table_number}', ${h.total}, '${h.payment_method}', '${h.created_at}')" style="background: #858796; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: 'Prompt'; font-size: 0.85rem;">
+                                <i class="fas fa-print"></i> ปริ้น
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("ไม่สามารถโหลดประวัติได้:", err);
+                document.getElementById('history-table-body').innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">เกิดข้อผิดพลาดในการดึงข้อมูลประวัติ</td></tr>';
+            }
+        }
+
+        // ==========================================
+        // ปริ้นใบเสร็จย้อนหลัง
+        // ==========================================
+        async function printOldReceipt(historyId, tableNum, total, payMethod, createdAt) {
+            try {
+                const res = await fetch(`/api/orders/history/${historyId}/items`);
+                if (!res.ok) throw new Error("ไม่พบ API รายการอาหารเก่า");
+                const items = await res.json();
+                
+                if (!items || items.length === 0) {
+                    alert("ไม่พบรายละเอียดรายการอาหารสำหรับบิลนี้");
+                    return;
+                }
+
+                const dateObj = new Date(createdAt);
+                const dateStr = dateObj.toLocaleDateString('th-TH');
+                const timeStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+                const itemsRowsHtml = items.map(i => {
+                    const qty = i.qty || 1;
+                    const itemTotal = i.price * qty;
+                    return `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 11px;">
+                            <div style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 5px;">${i.menu_name} (x${qty})</div>
+                            <div style="text-align: right; font-weight: bold; white-space: nowrap;">${itemTotal} บ.</div>
+                        </div>
+                    `;
+                }).join('');
+
+                const printWin = window.open('', '_blank', 'width=350,height=500');
+                printWin.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="th">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>พิมพ์ใบเสร็จย้อนหลัง</title>
+                        <style>
+                            @page { margin: 0; }
+                            * { color: #000000 !important; font-family: 'Tahoma', 'Arial', sans-serif; }
+                            body { width: 155px; margin: 0 auto; padding: 4px 2px; box-sizing: border-box; font-size: 11px; line-height: 1.3; }
+                            .dashed-line { border-top: 1px dashed #000; margin: 4px 0; width: 100%; }
+                        </style>
+                    </head>
+                    <body>
+                        <div style="text-align: center; margin-bottom: 4px;">
+                            <h3 style="margin: 0; font-size: 14px;">บัวแจ่วฮ้อน</h3>
+                            <div style="font-size: 10px;">ใบเสร็จรับเงิน (พิมพ์ซ้ำ)</div>
+                            <div style="font-size: 11px; margin-top: 2px;"><b>โต๊ะ: ${tableNum}</b></div>
+                            <div style="font-size: 9px;">${dateStr} เวลา ${timeStr}</div>
+                        </div>
+                        
+                        <div class="dashed-line"></div>
+                        ${itemsRowsHtml}
+                        <div class="dashed-line"></div>
+                        
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-top: 4px;">
+                            <div>ยอดรวม</div>
+                            <div>${total} บาท</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
+                            <div>ชำระโดย</div>
+                            <div>${payMethod}</div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 10px; font-size: 10px; font-weight: bold;">
+                            🙏 ขอบคุณที่ใช้บริการ 🙏
+                        </div>
+                        <script>
+                            window.onload = function() {
+                                setTimeout(function() {
+                                    window.focus();
+                                    window.print();
+                                    window.close();
+                                }, 800);
+                            };
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                printWin.document.close();
+            } catch(err) {
+                console.error(err);
+                alert("เกิดข้อผิดพลาดในการดึงข้อมูลรายการอาหารเก่าเพื่อปริ้น");
+            }
+        }
+
+        // ==========================================
+        // Modal Confirm
+        // ==========================================
+        let onConfirmAction = null;
+
+        function openConfirm(title, message, action) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            onConfirmAction = action;
+            document.getElementById('confirm-overlay').style.display = 'flex';
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirm-overlay').style.display = 'none';
+            onConfirmAction = null;
+        }
+
+        document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+            if (onConfirmAction) onConfirmAction();
+            closeConfirm();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการเมนูอาหาร (Admin)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Prompt', sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        
+        /* CSS เพิ่มเติม: ปุ่ม Logout มุมขวาบน */
+        .top-bar { max-width: 1600px; margin: 0 auto 15px auto; display: flex; justify-content: flex-end; }
+        .btn-logout { background: #e74a3b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-family: 'Prompt'; font-weight: bold; transition: 0.3s; }
+        .btn-logout:hover { background: #c0392b; }
+
+        /* CSS หน้าต่าง Login */
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.3s; }
+        .login-modal { background: #fff; padding: 40px 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); text-align: center; width: 90%; max-width: 350px; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .login-icon { font-size: 50px; margin-bottom: 10px; }
+        .login-modal h2 { margin: 0 0 5px; color: #333; font-size: 22px; }
+        .login-modal p { color: #666; font-size: 14px; margin-bottom: 25px; }
+        .input-group input { width: 100%; padding: 15px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 16px; box-sizing: border-box; text-align: center; font-family: 'Prompt'; }
+        .input-group input:focus { border-color: #4e73df; outline: none; }
+        .login-btn { width: 100%; background-color: #4e73df; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: 0.3s; font-family: 'Prompt';}
+        .login-btn:hover { background-color: #2e59d9; }
+        .error-msg { color: #ff3b30; font-size: 13px; margin-top: 10px; display: none; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* โครงสร้างหลักแบบ 2 คอลัมน์ (ซ้ายควบคุม / ขวาแสดงตารางเต็มๆ) */
+        .container { max-width: 1600px; margin: 0 auto; display: flex; gap: 20px; align-items: flex-start; }
+        
+        .left-column { flex: 0 0 320px; display: flex; flex-direction: column; gap: 20px; }
+        .form-panel, .category-panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.95rem; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Prompt'; }
+        .note { font-size: 0.75rem; color: #888; }
+        
+        .btn { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Prompt'; font-weight: bold; width: 100%; color: white; margin-top: 8px; }
+        .btn-save { background: #4e73df; }
+        .btn-save:hover { background: #2e59d9; }
+        .btn-cancel { background: #858796; display: none; }
+        
+        /* ตารางฝั่งขวาขยายกว้างเต็มพื้นที่ */
+        .table-panel { flex: 1; min-width: 0; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .table-responsive { width: 100%; overflow-x: visible; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; word-break: break-word; }
+        th { background: #f8f9fc; color: #4e73df; white-space: nowrap; font-size: 0.9rem; }
+        td { font-size: 0.9rem; }
+        .img-preview { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; background: #eee; }
+        
+        .action-btn { border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; color: white; font-family: 'Prompt'; margin-right: 3px; margin-bottom: 3px; display: inline-block; font-size: 0.85rem; }
+        .btn-edit { background: #f6c23e; }
+        .btn-delete { background: #e74a3b; }
+
+        /* การปรับแต่งสำหรับหน้าจอมือถือ */
+        @media (max-width: 992px) {
+            body { padding: 10px; }
+            .container { flex-direction: column; }
+            .left-column { width: 100%; flex: 1 1 100%; }
+            .table-panel { width: 100%; padding: 12px 8px; }
+            th, td { padding: 8px 4px; font-size: 0.8rem; }
+            .img-preview { width: 38px; height: 38px; }
+            .action-btn { padding: 4px 6px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ระบบล็อคหน้าจอ (Login Modal) -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-modal">
+            <div class="login-icon">⚙️</div>
+            <h2>Admin Login</h2>
+            <p>ระบบจัดการหลังบ้าน</p>
+            <div class="input-group">
+                <input type="password" id="page-password" placeholder="ใส่รหัสผ่านแอดมิน..." />
+            </div>
+            <p id="login-error" class="error-msg">รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่</p>
+            <button onclick="checkPassword()" class="login-btn">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <!-- ปุ่มออกจากระบบ -->
+    <div class="top-bar">
+        <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</button>
+    </div>
+
+    <!-- โครงสร้างเว็บหลัก -->
+    <div class="container">
+        
+        <!-- ฝั่งซ้าย: ฟอร์มเพิ่ม/แก้ไข และ จัดเรียงหมวดหมู่ -->
+        <div class="left-column">
+            <!-- ฟอร์มเพิ่ม/แก้ไขเมนู -->
+            <div class="form-panel">
+                <h3 id="formTitle" style="margin-top: 0; color: #4e73df;"><i class="fas fa-plus-circle"></i> เพิ่มเมนูใหม่</h3>
+                <form id="menuForm">
+                    <div class="form-group">
+                        <label>ชื่อเมนู</label>
+                        <input type="text" id="name" required placeholder="เช่น ข้าวผัดกะเพรา">
+                    </div>
+                    <div class="form-group">
+                        <label>ราคา (บาท)</label>
+                        <input type="number" id="price" required placeholder="เช่น 50">
+                    </div>
+                    <div class="form-group">
+                        <label>หมวดหมู่</label>
+                        <input type="text" id="category" required placeholder="เช่น อาหารจานเดียว">
+                    </div>
+                    <div class="form-group">
+                        <label>URL รูปภาพ / ชื่อไฟล์รูป <span class="note">(ถ้าไม่มีเว้นว่างไว้)</span></label>
+                        <input type="text" id="image_url" placeholder="เช่น moo.jpg หรือแปะลิงก์เว็บ">
+                    </div>
+                    <div class="form-group">
+                        <label>ตัวเลือกเนื้อสัตว์ <span class="note">(คั่นด้วยลูกน้ำ)</span></label>
+                        <input type="text" id="meats" placeholder="เช่น หมู, ไก่+10">
+                    </div>
+                    <div class="form-group">
+                        <label>ท็อปปิ้งเพิ่มเติม <span class="note">(คั่นด้วยลูกน้ำ)</span></label>
+                        <input type="text" id="addons" placeholder="เช่น พิเศษ+10, ไข่ดาว+10">
+                    </div>
+                    
+                    <!-- เพิ่มช่องระดับความเผ็ด -->
+                    <div class="form-group">
+                        <label>ระดับความเผ็ด <span class="note">(เฉพาะเมนูที่ต้องการ คั่นด้วยลูกน้ำ)</span></label>
+                        <input type="text" id="spiciness" placeholder="เช่น ไม่เผ็ด, เผ็ดน้อย, เผ็ดมาก">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-save" id="btnSubmit"><i class="fas fa-save"></i> บันทึกข้อมูล</button>
+                    <button type="button" class="btn btn-cancel" id="btnCancel" onclick="resetForm()"><i class="fas fa-times"></i> ยกเลิกการแก้ไข</button>
+                </form>
+            </div>
+
+            <!-- จัดเรียงลำดับหมวดหมู่เมนู -->
+            <div class="category-panel">
+                <h4 style="margin-top: 0; color: #5a5c69;"><i class="fas fa-sort"></i> 🔄 จัดเรียงหมวดหมู่</h4>
+                <div id="admin-category-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                    <!-- รายการหมวดหมู่จะถูกโหลดมาใส่ตรงนี้ -->
+                </div>
+                <button onclick="saveCategoryOrder()" style="width: 100%; padding: 10px; background: #4e73df; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; font-family: 'Prompt';">
+                    <i class="fas fa-save"></i> บันทึกลำดับ
+                </button>
+            </div>
+        </div>
+
+        <!-- ฝั่งขวา: ตารางแสดงเมนู (ขยายแสดงผลเต็มพื้นที่) -->
+        <div class="table-panel">
+            <h2 style="margin-top: 0; color: #5a5c69;"><i class="fas fa-list"></i> รายการเมนูในระบบ</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 55px;">รูป</th>
+                            <th>ชื่อเมนู</th>
+                            <th style="width: 110px;">หมวดหมู่</th>
+                            <th style="width: 65px;">ราคา</th>
+                            <th>ตัวเลือกเพิ่มเติม</th>
+                            <th style="width: 90px;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="menuTableBody">
+                        <tr><td colspan="6" style="text-align:center;">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. ระบบจัดการ Login ---
+        const ADMIN_PASSWORD = "31102015"; 
+        const PAGE_NAME = "is_admin_logged_in";
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem(PAGE_NAME) === "true") {
+                document.getElementById("login-overlay").style.display = "none";
+            }
+            document.getElementById("page-password").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") checkPassword();
+            });
+        });
+
+        function checkPassword() {
+            const inputPass = document.getElementById("page-password").value;
+            const errorMsg = document.getElementById("login-error");
+            const overlay = document.getElementById("login-overlay");
+            const modal = document.querySelector('.login-modal');
+
+            if (inputPass === ADMIN_PASSWORD) {
+                localStorage.setItem(PAGE_NAME, "true");
+                overlay.style.opacity = "0";
+                setTimeout(() => overlay.style.display = "none", 300);
+            } else {
+                errorMsg.style.display = "block";
+                document.getElementById("page-password").value = "";
+                modal.style.transform = "translateX(-10px)";
+                setTimeout(() => modal.style.transform = "translateX(10px)", 50);
+                setTimeout(() => modal.style.transform = "translateX(-10px)", 100);
+                setTimeout(() => modal.style.transform = "translateX(0)", 150);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem(PAGE_NAME);
+            location.reload(); 
+        }
+
+        // --- 2. ระบบจัดการเมนู ---
+        let menusData = [];
+        let editingId = null;
+
+        async function loadMenus() {
+            try {
+                const res = await fetch('/api/menus', {
+                    method: 'GET',
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                menusData = await res.json();
+                renderTable();
+            } catch (err) {
+                console.error("โหลดข้อมูลล้มเหลว", err);
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('menuTableBody');
+            if(menusData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">ยังไม่มีเมนูในระบบ</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = menusData.map(m => `
+                <tr>
+                    <td>
+                        ${m.image_url 
+                            ? `<img src="${m.image_url}" class="img-preview" onerror="this.src='https://via.placeholder.com/50?text=No+Img'">` 
+                            : `<div class="img-preview" style="display:flex; align-items:center; justify-content:center; color:#aaa; font-size:0.75rem;">ไม่มีรูป</div>`}
+                    </td>
+                    <td><b>${m.name}</b></td>
+                    <td><span style="background:#eaecf4; padding:3px 8px; border-radius:12px; font-size:0.8rem; display:inline-block;">${m.category}</span></td>
+                    <td><b>${m.price}</b> ฿</td>
+                    <td>
+                        <small style="color:gray; line-height: 1.3; display:block;">
+                            เนื้อ: ${m.meats || '-'}<br>
+                            เสริม: ${m.addons || '-'}<br>
+                            เผ็ด: ${m.spiciness || '-'}
+                        </small>
+                    </td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick="editMenu(${m.id})"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn btn-delete" onclick="deleteMenu(${m.id}, '${m.name}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editMenu(id) {
+            const menu = menusData.find(m => m.id === id);
+            if(!menu) return;
+
+            editingId = id;
+            document.getElementById('name').value = menu.name;
+            document.getElementById('price').value = menu.price;
+            document.getElementById('category').value = menu.category;
+            
+            let currentImgUrl = menu.image_url || '';
+            if (currentImgUrl.startsWith('images/')) {
+                currentImgUrl = currentImgUrl.replace('images/', '');
+            }
+            document.getElementById('image_url').value = currentImgUrl;
+            
+            document.getElementById('meats').value = menu.meats || '';
+            document.getElementById('addons').value = menu.addons || '';
+            document.getElementById('spiciness').value = menu.spiciness || ''; // นำค่าความเผ็ดมาแสดง
+
+            document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit"></i> แก้ไขข้อมูลเมนู';
+            document.getElementById('formTitle').style.color = '#f6c23e';
+            document.getElementById('btnSubmit').style.background = '#f6c23e';
+            document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
+            document.getElementById('btnCancel').style.display = 'block';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            editingId = null;
+            document.getElementById('menuForm').reset();
+            
+            document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> เพิ่มเมนูใหม่';
+            document.getElementById('formTitle').style.color = '#4e73df';
+            document.getElementById('btnSubmit').style.background = '#4e73df';
+            document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-save"></i> บันทึกข้อมูล';
+            document.getElementById('btnCancel').style.display = 'none';
+        }
+
+        document.getElementById('menuForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            let imgUrlInput = document.getElementById('image_url').value.trim();
+            if (imgUrlInput !== "" && !imgUrlInput.startsWith('http') && !imgUrlInput.startsWith('/')) {
+                imgUrlInput = 'images/' + imgUrlInput;
+            }
+
+            // เพิ่มค่าความเผ็ดลงไปใน payload
+            const payload = {
+                name: document.getElementById('name').value,
+                price: document.getElementById('price').value,
+                category: document.getElementById('category').value,
+                image_url: imgUrlInput,
+                meats: document.getElementById('meats').value,
+                addons: document.getElementById('addons').value,
+                spiciness: document.getElementById('spiciness').value 
+            };
+
+            const method = editingId ? 'PUT' : 'POST';
+            const url = editingId ? `/api/menus/${editingId}` : '/api/menus';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if(res.ok) {
+                    resetForm();
+                    loadMenus();
+                    setTimeout(loadAdminCategories, 500);
+                } else {
+                    const err = await res.json();
+                    alert('เกิดข้อผิดพลาดจากเซิร์ฟเวอร์: ' + (err.sqlMessage || 'ไม่ทราบสาเหตุ'));
+                }
+            } catch(err) {
+                alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+            }
+        });
+
+        async function deleteMenu(id, name) {
+            if(confirm(`คุณต้องการลบเมนู "${name}" ใช่หรือไม่?`)) {
+                try {
+                    const res = await fetch(`/api/menus/${id}`, { 
+                        method: 'DELETE',
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+                    if(res.ok) {
+                        if(editingId === id) resetForm();
+                        loadMenus();
+                        setTimeout(loadAdminCategories, 500);
+                    }
+                } catch (err) {
+                    alert('ไม่สามารถลบข้อมูลได้');
+                }
+            }
+        }
+
+        // --- 3. ระบบจัดเรียงหมวดหมู่ ---
+        let adminCategories = [];
+
+        async function loadAdminCategories() {
+            try {
+                const menuRes = await fetch('/api/menus', {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                const menus = await menuRes.json();
+                let rawCategories = [...new Set(menus.map(m => m.category).filter(c => c))];
+
+                const orderRes = await fetch('/api/category-order', {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                const orderData = await orderRes.json();
+                const savedOrder = orderData.order_list || [];
+
+                rawCategories.sort((a, b) => {
+                    let indexA = savedOrder.indexOf(a);
+                    let indexB = savedOrder.indexOf(b);
+                    if (indexA === -1 && indexB === -1) return 0;
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
+
+                adminCategories = rawCategories;
+                renderAdminCategoryList();
+            } catch (err) {
+                console.error("โหลดข้อมูลหมวดหมู่ไม่ได้:", err);
+            }
+        }
+
+        function renderAdminCategoryList() {
+            const list = document.getElementById('admin-category-list');
+            list.innerHTML = adminCategories.map((cat, index) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8f9fc; padding: 8px 10px; border: 1px solid #e3e6f0; border-radius: 5px;">
+                    <span style="font-weight: 500; font-size: 0.85rem;">${cat}</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button onclick="moveCategory(${index}, -1)" ${index === 0 ? 'disabled' : ''} style="cursor:pointer; padding: 3px 8px; border:1px solid #ccc; background:#fff; border-radius:3px; font-size:0.75rem;">▲</button>
+                        <button onclick="moveCategory(${index}, 1)" ${index === adminCategories.length - 1 ? 'disabled' : ''} style="cursor:pointer; padding: 3px 8px; border:1px solid #ccc; background:#fff; border-radius:3px; font-size:0.75rem;">▼</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function moveCategory(index, direction) {
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= adminCategories.length) return;
+            
+            const temp = adminCategories[index];
+            adminCategories[index] = adminCategories[targetIndex];
+            adminCategories[targetIndex] = temp;
+            
+            renderAdminCategoryList();
+        }
+
+        async function saveCategoryOrder() {
+            try {
+                const res = await fetch('/api/category-order', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ order_list: adminCategories })
+                });
+                
+                if (res.ok) {
+                    alert('บันทึกลำดับหมวดหมู่เรียบร้อยแล้ว!');
+                } else {
+                    alert('เกิดข้อผิดพลาดในการบันทึก');
+                }
+            } catch (err) {
+                alert('ไม่สามารถเชื่อมต่อระบบได้');
+            }
+        }
+
+        // เริ่มโหลดข้อมูลเมื่อเปิดหน้าเพจ
+        window.onload = () => {
+            loadMenus();
+            loadAdminCategories();
+        };
+    </script>
+</body>
+</html>

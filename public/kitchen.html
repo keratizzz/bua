@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบห้องครัว (Kitchen)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #1e293b; color: white; padding: 20px; margin: 0; }
+        h1 { text-align: center; color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 10px; margin-top: 0; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .btn-logout { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-family: 'Kanit'; font-weight: bold; }
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-modal { background: #fff; padding: 40px 30px; border-radius: 20px; text-align: center; width: 90%; max-width: 350px; color: #333; }
+        .input-group input { width: 100%; padding: 15px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 16px; text-align: center; font-family: 'Kanit'; }
+        .login-btn { width: 100%; background-color: #f59e0b; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 18px; cursor: pointer; margin-top: 15px; font-family: 'Kanit'; }
+        .error-msg { color: #ef4444; display: none; margin-top: 10px; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
+        .order-card { background: #334155; padding: 20px; border-radius: 12px; border-top: 6px solid #f59e0b; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 12px; }
+        .table-title { font-size: 22px; font-weight: bold; color: #f59e0b; margin: 0; }
+        .order-item-box { background: #1e293b; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .qty-badge { background: #ef4444; color: white; border-radius: 6px; padding: 2px 8px; font-weight: bold; margin-right: 6px; }
+        .btn-done-item { background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: 'Kanit'; }
+        .btn-done-all { background: #10b981; color: white; border: none; padding: 12px; width: 100%; font-size: 18px; border-radius: 8px; cursor: pointer; font-family: 'Kanit'; margin-top: 10px; }
+        .empty-msg { text-align: center; color: #94a3b8; font-size: 22px; grid-column: 1 / -1; margin-top: 60px; }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-modal">
+            <div style="font-size: 50px;">🍳</div>
+            <h2>Kitchen Login</h2>
+            <div class="input-group"><input type="password" id="page-password" placeholder="ใส่รหัสผ่านห้องครัว..." /></div>
+            <p id="login-error" class="error-msg">รหัสไม่ถูกต้อง</p>
+            <button onclick="checkPassword()" class="login-btn">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <div class="top-bar">
+        <span style="font-size: 1.1rem; color: #cbd5e1;"><i class="fas fa-chef"></i> สถานะ: พร้อมทำงาน</span>
+        <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</button>
+    </div>
+
+    <h1>👨‍🍳 รายการอาหารที่ต้องทำ</h1>
+    <div class="grid-container" id="kitchen-orders"></div>
+
+    <script>
+        const KITCHEN_PASSWORD = "31102015";
+        const PAGE_NAME = "is_kitchen_logged_in";
+        const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+        const socket = io();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem(PAGE_NAME) === "true") {
+                document.getElementById("login-overlay").style.display = "none";
+                loadKitchenOrders(); // โหลดข้อมูลเฉพาะเมื่อยืนยันล็อกอินแล้ว
+            }
+            document.getElementById("page-password").addEventListener("keypress", e => { if (e.key === "Enter") checkPassword(); });
+        });
+
+        function checkPassword() {
+            if (document.getElementById("page-password").value === KITCHEN_PASSWORD) {
+                localStorage.setItem(PAGE_NAME, "true");
+                document.getElementById("login-overlay").style.display = "none";
+                
+                // ปลดล็อกสิทธิ์การเล่นเสียงของเบราว์เซอร์
+                alertSound.play().then(() => { 
+                    alertSound.pause(); 
+                    alertSound.currentTime = 0; 
+                }).catch(() => {});
+
+                loadKitchenOrders();
+            } else {
+                document.getElementById("login-error").style.display = "block";
+            }
+        }
+
+        function logout() { localStorage.removeItem(PAGE_NAME); location.reload(); }
+
+        socket.on('update_kitchen', () => { 
+            alertSound.play().catch(()=>{}); 
+            loadKitchenOrders(); 
+        });
+
+        function loadKitchenOrders() {
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(orders => {
+                    const container = document.getElementById('kitchen-orders');
+                    if (!orders || orders.length === 0) return container.innerHTML = `<div class="empty-msg">✅ ไม่มีออเดอร์ค้าง</div>`;
+
+                    const grouped = {};
+                    orders.forEach(o => {
+                        if (!grouped[o.table_number]) grouped[o.table_number] = [];
+                        grouped[o.table_number].push(o);
+                    });
+
+                    container.innerHTML = Object.keys(grouped).map(tableNum => {
+                        const items = grouped[tableNum];
+                        const itemsHTML = items.map(item => `
+                            <div class="order-item-box">
+                                <div>
+                                    <span class="qty-badge">x${item.qty || 1}</span> <b>${item.menu_name}</b>
+                                    <br><small style="color:#f59e0b;">${item.addons || '-'}</small>
+                                </div>
+                                <button class="btn-done-item" onclick="finishSingleOrder(${item.id})">✅ เสิร์ฟ</button>
+                            </div>
+                        `).join('');
+
+                        return `
+                            <div class="order-card">
+                                <div>
+                                    <div class="card-header">
+                                        <h2 class="table-title">โต๊ะ ${tableNum}</h2>
+                                        <small style="color:#94a3b8;">${items.length} รายการ</small>
+                                    </div>
+                                    ${itemsHTML}
+                                </div>
+                                <button class="btn-done-all" onclick="finishTableOrders('${tableNum}')">ทำเสร็จทั้งโต๊ะ</button>
+                            </div>`;
+                    }).join('');
+                })
+                .catch(err => console.error("Error loading kitchen orders:", err));
+        }
+
+        function finishSingleOrder(id) { fetch(`/api/orders/serve/${id}`, { method: 'PUT' }).then(() => loadKitchenOrders()); }
+        function finishTableOrders(tableNum) { fetch(`/api/orders/serve-table/${tableNum}`, { method: 'PUT' }).then(() => loadKitchenOrders()); }
+    </script>
+</body>
+</html>

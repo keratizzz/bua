@@ -1,0 +1,176 @@
+:root {
+    --primary: #4e73df;
+    --success: #1cc88a;
+    --danger: #e74a3b;
+    --warning: #f6c23e;
+    --dark: #5a5c69;
+    --light: #f8f9fc;
+    --bg-color: #e9ecef;
+    --sidebar-width: 260px;
+}
+
+body {
+    font-family: 'Prompt', sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* =========================================
+   1. ส่วนประกอบทั่วไป (Shared Components)
+========================================= */
+.panel {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.panel-title {
+    margin-top: 0;
+    color: var(--dark);
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Prompt', sans-serif;
+    font-weight: 600;
+    transition: 0.2s;
+    color: white;
+}
+.btn-primary { background: var(--primary); }
+.btn-primary:hover { background: #2e59d9; }
+.btn-success { background: var(--success); }
+.btn-success:hover { background: #17a673; }
+.btn-warning { background: var(--warning); color: #333; }
+.btn-danger { background: var(--danger); }
+
+/* =========================================
+   2. โครงสร้าง Sidebar (หน้าครัว & เคาน์เตอร์)
+========================================= */
+.layout-wrapper { display: flex; }
+#sidebar {
+    width: var(--sidebar-width);
+    background: #ffffff;
+    height: 100vh;
+    position: fixed;
+    left: -260px;
+    top: 0;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+#sidebar.active { left: 0; }
+.sidebar-header {
+    padding: 20px;
+    background: var(--primary);
+    color: white;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+}
+.sidebar-menu { list-style: none; padding: 0; margin: 0; }
+.sidebar-menu li a {
+    display: block;
+    padding: 15px 20px;
+    color: var(--dark);
+    text-decoration: none;
+    font-size: 16px;
+    border-bottom: 1px solid #eee;
+}
+.sidebar-menu li a:hover { background: #f1f3f9; color: var(--primary); padding-left: 25px; }
+.sidebar-menu li a i { margin-right: 10px; width: 20px; }
+
+#main-content { flex: 1; transition: all 0.3s ease; width: 100%; }
+.top-navbar {
+    background: #fff;
+    padding: 15px 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.btn-toggle { background: none; border: none; font-size: 24px; color: var(--dark); cursor: pointer; }
+
+/* =========================================
+   3. หน้าสั่งอาหารลูกค้า (index.html)
+========================================= */
+.customer-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+.menu-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+    padding-bottom: 15px;
+}
+.menu-card img { width: 100%; height: 150px; object-fit: cover; background: #ddd; }
+.menu-card h4 { margin: 10px 0 5px 0; color: var(--dark); }
+.menu-card .price { color: var(--primary); font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+.cart-floating-btn {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--primary); color: white;
+    border-radius: 50%; width: 60px; height: 60px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    cursor: pointer; z-index: 100;
+}
+
+/* =========================================
+   4. หน้าห้องครัว (kitchen.html)
+========================================= */
+.kitchen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+.order-card {
+    background: white;
+    border-left: 6px solid var(--danger);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.order-card .table-badge {
+    background: var(--danger); color: white;
+    padding: 5px 10px; border-radius: 5px; font-weight: bold; font-size: 18px;
+}
+.order-card ul { padding-left: 20px; margin: 15px 0; color: var(--dark); font-size: 16px; }
+
+/* =========================================
+   5. หน้าเคาน์เตอร์คิดเงิน (counter.html)
+========================================= */
+.dashboard-container {
+    padding: 20px; display: grid; grid-template-columns: 2fr 1.2fr; gap: 20px;
+}
+.table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
+.table-card {
+    background: var(--primary); color: white;
+    border-radius: 8px; padding: 20px; text-align: center;
+    font-size: 24px; font-weight: bold; cursor: pointer;
+    box-shadow: 0 4px 6px rgba(78, 115, 223, 0.3); transition: 0.2s;
+}
+.table-card:hover { transform: translateY(-3px); background: #2e59d9; }
+
+.receipt-box {
+    background: #fffbe6; border: 1px dashed #ccc; padding: 20px;
+}
+.bill-items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+.bill-items th { border-bottom: 1px dashed #333; padding-bottom: 5px; text-align: left; }
+.bill-items td { padding: 5px 0; }
+.total-row { font-size: 22px; font-weight: bold; color: var(--danger); text-align: right; border-top: 1px dashed #333; padding-top: 10px; }
+.payment-section { margin-top: 20px; display: none; }
+.payment-section select, .payment-section button { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 5px; }
