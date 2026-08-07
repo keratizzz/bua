@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,51 +8,315 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Prompt', sans-serif; background: #f8f9fc; margin: 0; padding: 0; padding-bottom: 100px; }
-        .top-navbar { background: #4e73df; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .category-bar { display: flex; gap: 10px; overflow-x: auto; padding: 15px 20px; background: white; position: sticky; top: 55px; z-index: 90; }
-        .category-bar::-webkit-scrollbar { display: none; }
-        .category-btn { background: #f1f3f9; color: #5a5c69; border: none; padding: 8px 16px; border-radius: 20px; font-family: 'Prompt'; font-size: 0.95rem; cursor: pointer; white-space: nowrap; transition: 0.2s; }
-        .category-btn.active { background: #4e73df; color: white; font-weight: 500; }
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding: 20px; }
-        .menu-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; border: 1px solid #e3e6f0; }
-        .menu-img { width: 100%; height: 130px; object-fit: cover; }
-        .menu-info { padding: 12px; }
-        .menu-title { font-weight: 600; margin: 0 0 5px 0; font-size: 1rem; color: #333; }
-        .menu-price { color: #e74a3b; font-weight: bold; margin: 0; font-size: 1.1rem; }
-        
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: flex-end; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
-        .modal-overlay.active { opacity: 1; visibility: visible; }
-        .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 25px 20px; transform: translateY(100%); transition: all 0.3s ease; position: relative; max-height: 85vh; overflow-y: auto; }
-        .modal-overlay.active .modal-content { transform: translateY(0); }
-        .close-modal-red { position: absolute; top: 20px; right: 20px; font-size: 22px; color: #e74a3b; cursor: pointer; font-weight: bold; }
-        
-        .modal-title { font-size: 1.5rem; font-weight: 700; color: #3b82f6; margin: 0 0 5px 0; }
-        .modal-price-text { font-size: 1.1rem; color: #e74a3b; font-weight: bold; margin-bottom: 15px; }
-        .form-group { margin-bottom: 20px; }
-        .section-label { font-size: 1.05rem; font-weight: 600; color: #333; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .sub-label { font-size: 0.9rem; color: #666; font-weight: normal; }
-        .options-list { display: flex; flex-direction: column; gap: 8px; }
-        .option-card { display: flex; align-items: center; gap: 12px; background: #f8f9fa; border: 1px solid #e2e8f0; padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
-        .option-card:has(input:checked) { background: #eff6ff; border-color: #3b82f6; font-weight: 500; }
-        .option-card input { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
-        .note-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 15px; font-family: 'Prompt'; font-size: 0.95rem; resize: none; outline: none; }
-        .qty-and-submit { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-        .qty-control { display: flex; align-items: center; justify-content: center; gap: 20px; }
-        .qty-btn { background: #f1f3f9; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer; color: #3b82f6; font-weight: bold; }
-        .btn-add-cart-blue { background: #3b82f6; color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; font-family: 'Prompt'; cursor: pointer; }
-        
-        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 500; }
-        .btn-view-cart { background: #3b82f6; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-family: 'Prompt'; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
-        .btn-delete-item { background: none; border: none; color: #e74a3b; cursor: pointer; font-size: 16px; }
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: #f8f9fc;
+            margin: 0;
+            padding: 0;
+            padding-bottom: 100px;
+        }
+
+        .top-navbar {
+            background: #4e73df;
+            padding: 15px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-bar {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 15px 20px;
+            background: white;
+            position: sticky;
+            top: 55px;
+            z-index: 90;
+        }
+
+        .category-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .category-btn {
+            background: #f1f3f9;
+            color: #5a5c69;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: 'Prompt';
+            font-size: 0.95rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: 0.2s;
+        }
+
+        .category-btn.active {
+            background: #4e73df;
+            color: white;
+            font-weight: 500;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+            padding: 20px;
+        }
+
+        .menu-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #e3e6f0;
+        }
+
+        .menu-img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+        }
+
+        .menu-info {
+            padding: 12px;
+        }
+
+        .menu-title {
+            font-weight: 600;
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .menu-price {
+            color: #e74a3b;
+            font-weight: bold;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 24px 24px 0 0;
+            padding: 25px 20px;
+            transform: translateY(100%);
+            transition: all 0.3s ease;
+            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .close-modal-red {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 22px;
+            color: #e74a3b;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin: 0 0 5px 0;
+        }
+
+        .modal-price-text {
+            font-size: 1.1rem;
+            color: #e74a3b;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .section-label {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sub-label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: normal;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            padding: 14px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .option-card:has(input:checked) {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            font-weight: 500;
+        }
+
+        .option-card input {
+            width: 18px;
+            height: 18px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+
+        .note-input {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-family: 'Prompt';
+            font-size: 0.95rem;
+            resize: none;
+            outline: none;
+        }
+
+        .qty-and-submit {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .qty-btn {
+            background: #f1f3f9;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        .btn-add-cart-blue {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            font-family: 'Prompt';
+            cursor: pointer;
+        }
+
+        .cart-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 500;
+        }
+
+        .btn-view-cart {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-family: 'Prompt';
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .btn-delete-item {
+            background: none;
+            border: none;
+            color: #e74a3b;
+            cursor: pointer;
+            font-size: 16px;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="top-navbar">
-        <h3 style="margin: 0; color: white;"><i class="fas fa-utensils"></i> <span id="display-table">ตรวจสอบโต๊ะ...</span></h3>
+        <h3 style="margin: 0; color: white;"><i class="fas fa-utensils"></i> <span
+                id="display-table">ตรวจสอบโต๊ะ...</span></h3>
     </div>
 
     <div class="category-bar" id="category-container"></div>
@@ -63,7 +328,7 @@
             <span class="close-modal-red" onclick="closeModal('order-modal')"><i class="fas fa-times"></i></span>
             <h2 id="modal-menu-name" class="modal-title">ชื่อเมนู</h2>
             <div class="modal-price-text"><span id="modal-base-price">0</span> บาท</div>
-            
+
             <div id="meat-section" class="form-group" style="display: none;">
                 <div class="section-label">🥩 เลือกเนื้อสัตว์ <span class="sub-label">(เลือก 1 อย่าง)</span></div>
                 <div id="meat-options-container" class="options-list"></div>
@@ -79,19 +344,19 @@
                 <div class="section-label">🌶️ ระดับความเผ็ด <span class="sub-label">(เลือก 1 อย่าง)</span></div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <label class="option-card">
-                        <input type="radio" name="spice" value="ไม่เผ็ด" checked> 
+                        <input type="radio" name="spice" value="ไม่เผ็ด" checked>
                         <span>ไม่เผ็ด</span>
                     </label>
                     <label class="option-card">
-                        <input type="radio" name="spice" value="เผ็ดน้อย"> 
+                        <input type="radio" name="spice" value="เผ็ดน้อย">
                         <span>เผ็ดน้อย</span>
                     </label>
                     <label class="option-card">
-                        <input type="radio" name="spice" value="เผ็ดกลาง"> 
+                        <input type="radio" name="spice" value="เผ็ดกลาง">
                         <span>เผ็ดกลาง</span>
                     </label>
                     <label class="option-card">
-                        <input type="radio" name="spice" value="เผ็ดมาก"> 
+                        <input type="radio" name="spice" value="เผ็ดมาก">
                         <span>เผ็ดมาก</span>
                     </label>
                 </div>
@@ -105,7 +370,8 @@
             <div class="qty-and-submit">
                 <div class="qty-control">
                     <button class="qty-btn" onclick="changeQuantity(-1)">-</button>
-                    <span id="modal-qty" style="font-size: 20px; font-weight: bold; min-width: 30px; text-align: center;">1</span>
+                    <span id="modal-qty"
+                        style="font-size: 20px; font-weight: bold; min-width: 30px; text-align: center;">1</span>
                     <button class="qty-btn" onclick="changeQuantity(1)">+</button>
                 </div>
                 <button class="btn-add-cart-blue" onclick="addToCart()">
@@ -122,7 +388,8 @@
             <h3 style="margin-top: 0;"><i class="fas fa-shopping-cart"></i> ตะกร้าอาหาร</h3>
             <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 15px;">
             <div id="cart-items-list"></div>
-            <div style="margin: 20px 0; display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem;">
+            <div
+                style="margin: 20px 0; display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem;">
                 <span>ยอดรวมทั้งหมด:</span><span style="color: #e74a3b;"><span id="cart-grand-total">0</span> บาท</span>
             </div>
             <button class="btn-add-cart-blue" style="background: #1cc88a;" onclick="submitAllOrders()">
@@ -141,7 +408,8 @@
             <p style="color: #666; font-size: 1.1rem; margin-bottom: 30px;">
                 ขอบคุณที่ใช้บริการครับ<br>กรุณารอรับอาหารสักครู่นะครับ 🧑‍🍳
             </p>
-            <button class="btn-add-cart-blue" onclick="closeModal('success-modal')" style="background: #4e73df; width: 100%;">
+            <button class="btn-add-cart-blue" onclick="closeModal('success-modal')"
+                style="background: #4e73df; width: 100%;">
                 <i class="fas fa-utensils"></i> สั่งอาหารอีกครั้ง
             </button>
         </div>
@@ -150,14 +418,16 @@
     <!-- 🟢 แถบเมนูด้านล่างสุด (Cart Bar) -->
     <div class="cart-bar" id="bottom-cart-bar" style="display: none;">
         <div>
-            <span style="font-weight: bold;"><i class="fas fa-shopping-basket"></i> <span id="cart-count">0</span> รายการ</span>
-            <span style="color: #e74a3b; font-weight: bold; font-size: 1.1rem; margin-left: 10px;"><span id="cart-bar-total">0</span>.-</span>
+            <span style="font-weight: bold;"><i class="fas fa-shopping-basket"></i> <span id="cart-count">0</span>
+                รายการ</span>
+            <span style="color: #e74a3b; font-weight: bold; font-size: 1.1rem; margin-left: 10px;"><span
+                    id="cart-bar-total">0</span>.-</span>
         </div>
         <button class="btn-view-cart" onclick="openCartModal()">ดูตะกร้า</button>
     </div>
 
 
-    
+
     <script>
         let menusData = [], selectedMenu = null, orderQty = 1, currentTableNum = "ไม่ระบุ", cart = [];
 
@@ -170,20 +440,14 @@
             });
         });
 
-        function checkTable() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('table')) {
-                currentTableNum = params.get('table').toUpperCase();
-                document.getElementById('display-table').innerText = `โต๊ะ ${currentTableNum}`;
-            }
-        }
+
 
         async function loadMenus() {
             const res = await fetch('/api/menus', {
                 headers: { 'ngrok-skip-browser-warning': 'true' }
-            }); 
+            });
             menusData = await res.json();
-            
+
             let customOrder = [];
             try {
                 const orderRes = await fetch('/api/category-order', {
@@ -196,19 +460,19 @@
             }
 
             let rawCategories = [...new Set(menusData.map(m => m.category).filter(c => c))];
-            
+
             rawCategories.sort((a, b) => {
                 let indexA = customOrder.indexOf(a);
                 let indexB = customOrder.indexOf(b);
-                if (indexA === -1 && indexB === -1) return 0; 
+                if (indexA === -1 && indexB === -1) return 0;
                 if (indexA === -1) return 1;
                 if (indexB === -1) return -1;
-                return indexA - indexB; 
+                return indexA - indexB;
             });
 
             const categories = ['ทั้งหมด', ...rawCategories];
             const catContainer = document.getElementById('category-container');
-            catContainer.innerHTML = ''; 
+            catContainer.innerHTML = '';
 
             categories.forEach((cat, idx) => {
                 const btn = document.createElement('button');
@@ -224,13 +488,13 @@
             renderCards(menusData);
         }
 
-       function renderCards(items) {
-    const grid = document.getElementById('customer-menu-grid');
-    grid.innerHTML = items.map(m => {
-        // เช็กว่าเป็น URL เต็ม หรือเป็นไฟล์ในเครื่อง
-        const imgSrc = (m.image_url && m.image_url.trim() !== '') ? m.image_url : 'https://via.placeholder.com/300x200?text=No+Image';
-        
-        return `
+        function renderCards(items) {
+            const grid = document.getElementById('customer-menu-grid');
+            grid.innerHTML = items.map(m => {
+                // เช็กว่าเป็น URL เต็ม หรือเป็นไฟล์ในเครื่อง
+                const imgSrc = (m.image_url && m.image_url.trim() !== '') ? m.image_url : 'https://via.placeholder.com/300x200?text=No+Image';
+
+                return `
             <div class="menu-card" onclick="openOrderModal(${m.id})">
                 <img src="${imgSrc}" class="menu-img" alt="${m.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
                 <div class="menu-info">
@@ -239,8 +503,8 @@
                 </div>
             </div>
         `;
-    }).join('');
-}
+            }).join('');
+        }
 
         function extractPrice(text) { const m = text.match(/\+\s*(\d+)/); return m ? parseInt(m[1]) : 0; }
 
@@ -262,19 +526,19 @@
 
             const meatSec = document.getElementById('meat-section');
             const meatCon = document.getElementById('meat-options-container');
-            meatCon.innerHTML = ''; 
-            
+            meatCon.innerHTML = '';
+
             if (selectedMenu.meats) {
                 meatSec.style.display = 'block';
                 meatCon.innerHTML = selectedMenu.meats.split(',').map((m, i) => `
-                    <label class="option-card"><input type="radio" name="meat" value="${m.trim()}" ${i===0?'checked':''} onchange="calcTotal()"> <span>${m.trim()}</span></label>
+                    <label class="option-card"><input type="radio" name="meat" value="${m.trim()}" ${i === 0 ? 'checked' : ''} onchange="calcTotal()"> <span>${m.trim()}</span></label>
                 `).join('');
             } else { meatSec.style.display = 'none'; }
 
             const addSec = document.getElementById('addon-section');
             const addCon = document.getElementById('addon-options-container');
-            addCon.innerHTML = ''; 
-            
+            addCon.innerHTML = '';
+
             if (selectedMenu.addons) {
                 addSec.style.display = 'block';
                 addCon.innerHTML = selectedMenu.addons.split(',').map(a => `
@@ -305,7 +569,7 @@
 
         function addToCart() {
             let opts = [];
-            
+
             if (document.getElementById('spice-section').style.display === 'block') {
                 const spice = document.querySelector('input[name="spice"]:checked');
                 if (spice) opts.push(`ระดับ: ${spice.value}`);
@@ -314,14 +578,14 @@
             const meat = document.querySelector('input[name="meat"]:checked');
             if (meat) opts.push(meat.value);
             document.querySelectorAll('input[name="addon"]:checked').forEach(a => opts.push(a.value));
-            
+
             const note = document.getElementById('modal-note').value.trim();
             if (note) opts.push(`โน้ต: ${note}`);
 
             const addonsStr = opts.join(', ');
-            
+
             // 🛠️ แก้ไขตรงนี้: ลบ / orderQty ออก เพื่อเก็บราคาต่อหน่วยแบบเต็มๆ
-            const unitPrice = calcTotal(); 
+            const unitPrice = calcTotal();
 
             const existingItem = cart.find(i => i.menu_name === selectedMenu.name && i.addons === addonsStr);
 
@@ -329,10 +593,10 @@
                 existingItem.qty += orderQty;
             } else {
                 cart.push({
-                    id: Date.now(), 
-                    menu_name: selectedMenu.name, 
-                    price: unitPrice, 
-                    qty: orderQty, 
+                    id: Date.now(),
+                    menu_name: selectedMenu.name,
+                    price: unitPrice,
+                    qty: orderQty,
                     addons: addonsStr
                 });
             }
@@ -360,40 +624,92 @@
             document.getElementById('cart-modal').classList.add('active');
         }
 
-        function del(id) { cart = cart.filter(i => i.id !== id); openCartModal(); updateCart(); if(!cart.length) closeModal('cart-modal'); }
+        function del(id) { cart = cart.filter(i => i.id !== id); openCartModal(); updateCart(); if (!cart.length) closeModal('cart-modal'); }
 
+
+        // 1. ระบบจำค่าโต๊ะลง localStorage (รีเฟรชแล้วเลขโต๊ะไม่หาย)
+        function checkTable() {
+            const params = new URLSearchParams(window.location.search);
+            let table = params.get('table');
+
+            if (table) {
+                currentTableNum = table.toUpperCase();
+                localStorage.setItem('customer_table_num', currentTableNum);
+            } else {
+                currentTableNum = localStorage.getItem('customer_table_num') || "ไม่ระบุ";
+            }
+
+            document.getElementById('display-table').innerText = `โต๊ะ ${currentTableNum}`;
+        }
+
+        // 2. ป้องกันการกดสั่งซ้ำรัวๆ (Debounce / Lock Button)
         async function submitAllOrders() {
-            if(currentTableNum === "ไม่ระบุ") return alert('ไม่มีเลขโต๊ะ!');
-            if(cart.length === 0) return alert('ตะกร้าว่างเปล่า!');
+            if (currentTableNum === "ไม่ระบุ") return alert('ไม่มีเลขโต๊ะ!');
+            if (cart.length === 0) return alert('ตะกร้าว่างเปล่า!');
+
+            const btn = document.querySelector('#cart-modal .btn-add-cart-blue');
+            btn.disabled = true; // ล็อกปุ่มสั่งซื้อทันที
+            btn.innerText = 'กำลังส่งออเดอร์...';
 
             try {
                 const response = await fetch('/api/orders/batch', {
-                    method: 'POST', 
-                    headers: { 
+                    method: 'POST',
+                    headers: {
                         'Content-Type': 'application/json',
                         'ngrok-skip-browser-warning': 'true'
                     },
-                    body: JSON.stringify({ 
-                        table_number: currentTableNum, 
-                        items: cart 
+                    body: JSON.stringify({
+                        table_number: currentTableNum,
+                        items: cart
                     })
                 });
 
                 if (response.ok) {
-                    cart = []; 
+                    cart = [];
                     updateCart();
-                    closeModal('cart-modal'); 
-                    document.getElementById('success-modal').classList.add('active'); 
+                    closeModal('cart-modal');
+                    document.getElementById('success-modal').classList.add('active');
                 } else {
                     alert('เกิดข้อผิดพลาดในการส่งข้อมูล');
                 }
             } catch (error) {
-                console.error(error);
                 alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            } finally {
+                btn.disabled = false; // ปลดล็อกปุ่ม
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> ยืนยันส่งรายการ (รวดเดียว)';
+            }
+        }
+
+        async function checkPassword() {
+            const inputPass = document.getElementById("page-password").value;
+            const errorMsg = document.getElementById("login-error");
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: inputPass })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    localStorage.setItem(PAGE_NAME, "true");
+                    document.getElementById("login-overlay").style.display = "none";
+
+                    // เรียกฟังก์ชันโหลดข้อมูลตามแต่ละหน้า
+                    if (typeof loadKitchenOrders === 'function') loadKitchenOrders();
+                    if (typeof loadActiveOrders === 'function') loadActiveOrders();
+                    if (typeof loadMenus === 'function') loadMenus();
+                } else {
+                    if (errorMsg) errorMsg.style.display = "block";
+                }
+            } catch (err) {
+                alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
             }
         }
 
         checkTable(); loadMenus();
     </script>
 </body>
+
 </html>

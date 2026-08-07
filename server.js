@@ -15,14 +15,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // เปลี่ยนมาใช้ createPool
 const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
 // ==========================================
@@ -75,25 +75,6 @@ function notifyActiveTables() {
     });
 }
 
-// ==========================================
-// 🚀 API ENDPOINTS (ระบบจัดการออเดอร์)
-// ==========================================
-
-app.post('/api/orders/batch', (req, res) => {
-    const { table_number, items } = req.body;
-    if (!items || items.length === 0) return res.status(400).json({ message: 'ตะกร้าว่างเปล่า' });
-
-    const values = items.map(item => [
-        table_number, item.menu_name, item.price, item.qty || 1, item.addons || '', 'pending'
-    ]);
-
-    const sql = "INSERT INTO orders (table_number, menu_name, price, qty, addons, status) VALUES ?";
-    db.query(sql, [values], (err, result) => {
-        if (err) return res.status(500).json(err);
-        io.emit('new_order_submitted');
-        res.json({ message: 'สั่งอาหารสำเร็จ', inserted_count: result.affectedRows });
-    });
-});
 
 app.get('/api/orders/pending', (req, res) => {
     const sql = `
@@ -126,7 +107,7 @@ app.get('/api/orders/drinks', (req, res) => {
 app.put('/api/orders/confirm-table/:tableNum', (req, res) => {
     const tableNum = req.params.tableNum;
     const sql = "UPDATE orders SET status = 'confirmed' WHERE table_number = ? AND status = 'pending'";
-    
+
     db.query(sql, [tableNum], (err) => {
         if (err) return res.status(500).json(err);
         io.emit('update_kitchen');
@@ -149,7 +130,7 @@ app.delete('/api/orders/item/:id', (req, res) => {
     const sql = "DELETE FROM orders WHERE id = ?";
     db.query(sql, [req.params.id], (err, result) => {
         if (err) return res.status(500).json(err);
-        notifyActiveTables(); 
+        notifyActiveTables();
         res.json({ message: 'ลบรายการออกจากบิลเรียบร้อย' });
     });
 });
@@ -157,10 +138,10 @@ app.delete('/api/orders/item/:id', (req, res) => {
 app.post('/api/orders/custom', (req, res) => {
     const { table_number, menu_name, price, qty } = req.body;
     const checkSql = "SELECT id, qty FROM orders WHERE table_number = ? AND menu_name = ? AND status IN ('confirmed', 'served') LIMIT 1";
-    
+
     db.query(checkSql, [table_number, menu_name], (err, results) => {
         if (err) return res.status(500).json(err);
-        
+
         if (results.length > 0) {
             const existingId = results[0].id;
             const newQty = parseInt(results[0].qty) + parseInt(qty);
@@ -274,7 +255,7 @@ app.get('/api/category-order', (req, res) => {
             console.error(err);
             return res.status(500).json({ error: "Database error" });
         }
-        
+
         let orderList = [];
         if (results.length > 0 && results[0].setting_value) {
             try {
@@ -291,7 +272,7 @@ app.get('/api/category-order', (req, res) => {
 app.post('/api/category-order', (req, res) => {
     const orderList = req.body.order_list || [];
     const jsonString = JSON.stringify(orderList);
-    
+
     const sql = "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'category_order'";
     db.query(sql, [jsonString], (err, results) => {
         if (err) {
@@ -478,4 +459,48 @@ app.get('/api/orders/summary-report', (req, res) => {
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
     console.log(`เซิร์ฟเวอร์ทำงานเรียบร้อยที่ http://localhost:${PORT}`);
+});
+
+// ==========================================
+// 🔒 AUTH API (ย้ายการเช็กรหัสผ่านมาระบบหลังบ้าน)
+// ==========================================
+app.post('/api/auth/login', (req, res) => {
+    const { password } = req.body;
+    const SYSTEM_PASSWORD = process.env.SYSTEM_PASSWORD || "31102015"; // ตั้งรหัสผ่านที่นี่ที่เดียว
+
+    if (password === SYSTEM_PASSWORD) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: "รหัสผ่านไม่ถูกต้อง" });
+    }
+});
+
+// ==========================================
+// 🚀 ปรับปรุง API รับออเดอร์ (คำนวณราคารวมท็อปปิ้ง)
+// ==========================================
+app.post('/api/orders/batch', (req, res) => {
+    const { table_number, items } = req.body;
+    if (!items || items.length === 0) return res.status(400).json({ message: 'ตะกร้าว่างเปล่า' });
+
+    // ดึงราคาฐานของทุกเมนูมาตรวจสอบป้องกันการแก้ไขราคาฝั่งลูกค้า
+    db.query("SELECT name, price FROM menus", (err, menus) => {
+        if (err) return res.status(500).json(err);
+        const priceMap = new Map(menus.map(m => [m.name, m.price]));
+
+        const values = items.map(item => {
+            const basePrice = priceMap.get(item.menu_name) || 0;
+            // ถ้าราคาที่ส่งมาน้อยกว่าราคาฐานใน DB ให้ใช้ราคาฐาน (ป้องกันการซื้อของ 0 บาท)
+            // แต่ยอมรับราคาที่สูงกว่าราคาฐาน (กรณีมีท็อปปิ้งบวกเพิ่ม เช่น +10 บาท)
+            const validatedPrice = (item.price >= basePrice) ? item.price : basePrice;
+
+            return [table_number, item.menu_name, validatedPrice, item.qty || 1, item.addons || '', 'pending'];
+        });
+
+        const sql = "INSERT INTO orders (table_number, menu_name, price, qty, addons, status) VALUES ?";
+        db.query(sql, [values], (err, result) => {
+            if (err) return res.status(500).json(err);
+            io.emit('new_order_submitted');
+            res.json({ message: 'สั่งอาหารสำเร็จ', inserted_count: result.affectedRows });
+        });
+    });
 });
