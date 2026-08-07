@@ -13,20 +13,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST || '127.0.0.1',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '31102015',
-    database: process.env.DB_NAME || 'restaurant',
-    port: process.env.DB_PORT || 3306
-});
-
-db.connect(err => {
-    if (err) {
-        console.error('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล:', err);
-        return;
-    }
-    console.log('เชื่อมต่อฐานข้อมูล MySQL สำเร็จแล้ว!');
+// เปลี่ยนมาใช้ createPool
+const db = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // ==========================================
