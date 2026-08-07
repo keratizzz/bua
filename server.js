@@ -14,11 +14,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const db = mysql.createConnection({
-    host: '127.0.0.1',
-    user: 'root',
-    password: '31102015',
-    database: 'restaurant',
-    port: 3306
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '31102015',
+    database: process.env.DB_NAME || 'restaurant',
+    port: process.env.DB_PORT || 3306
 });
 
 db.connect(err => {
