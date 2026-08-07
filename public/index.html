@@ -224,18 +224,23 @@
             renderCards(menusData);
         }
 
-        function renderCards(items) {
-            const grid = document.getElementById('customer-menu-grid');
-            grid.innerHTML = items.map(m => `
-                <div class="menu-card" onclick="openOrderModal(${m.id})">
-                    <img src="${m.image_url || 'ohm.jpg'}" class="menu-img" alt="${m.name}">
-                    <div class="menu-info">
-                        <h4 class="menu-title">${m.name}</h4>
-                        <p class="menu-price">${m.price}.-</p>
-                    </div>
+       function renderCards(items) {
+    const grid = document.getElementById('customer-menu-grid');
+    grid.innerHTML = items.map(m => {
+        // เช็กว่าเป็น URL เต็ม หรือเป็นไฟล์ในเครื่อง
+        const imgSrc = (m.image_url && m.image_url.trim() !== '') ? m.image_url : 'https://via.placeholder.com/300x200?text=No+Image';
+        
+        return `
+            <div class="menu-card" onclick="openOrderModal(${m.id})">
+                <img src="${imgSrc}" class="menu-img" alt="${m.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                <div class="menu-info">
+                    <h4 class="menu-title">${m.name}</h4>
+                    <p class="menu-price">${m.price}.-</p>
                 </div>
-            `).join('');
-        }
+            </div>
+        `;
+    }).join('');
+}
 
         function extractPrice(text) { const m = text.match(/\+\s*(\d+)/); return m ? parseInt(m[1]) : 0; }
 
