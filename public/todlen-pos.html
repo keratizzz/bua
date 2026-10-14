@@ -83,15 +83,36 @@
             transition: all 0.3s ease;
         }
 
-        .tab-btn:hover { background-color: var(--light); color: var(--dark); }
-        .tab-btn.active { background-color: var(--primary); color: var(--white); box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3); }
+        .tab-btn:hover {
+            background-color: var(--light);
+            color: var(--dark);
+        }
 
-        .tab-content { display: none; animation: fadeIn 0.3s; }
-        .tab-content.active { display: block; }
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: var(--white);
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .pos-grid {
@@ -150,7 +171,10 @@
             font-size: 13px;
         }
 
-        .menu-btn:hover { transform: translateY(-4px); box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4); }
+        .menu-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+        }
 
         table {
             width: 100%;
@@ -162,9 +186,24 @@
             border: 1px solid var(--border);
         }
 
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background-color: var(--light); color: #4b5563; font-weight: 600; font-size: 14px; text-transform: uppercase; }
-        .text-right { text-align: right; }
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background-color: var(--light);
+            color: #4b5563;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .text-right {
+            text-align: right;
+        }
 
         .delete-btn {
             background-color: #fee2e2;
@@ -178,7 +217,10 @@
             font-family: 'Prompt';
         }
 
-        .delete-btn:hover { background-color: var(--danger); color: white; }
+        .delete-btn:hover {
+            background-color: var(--danger);
+            color: white;
+        }
 
         .total-box {
             font-size: 26px;
@@ -207,8 +249,18 @@
             font-family: 'Prompt';
         }
 
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #4b5563; font-size: 14px; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4b5563;
+            font-size: 14px;
+        }
+
         .form-group input {
             width: 100%;
             padding: 10px 15px;
@@ -247,8 +299,13 @@
             gap: 8px;
         }
 
-        .btn-upload { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .btn-save { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .btn-upload {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
 
         .dashboard-cards {
             display: grid;
@@ -268,13 +325,38 @@
             overflow: hidden;
         }
 
-        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
-        .card-sales::before { background: var(--success); }
-        .card-market::before { background: var(--danger); }
-        .card-expense::before { background: var(--warning); }
-        .card-net::before { background: var(--primary); }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
 
-        .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; }
+        .card-sales::before {
+            background: var(--success);
+        }
+
+        .card-market::before {
+            background: var(--danger);
+        }
+
+        .card-expense::before {
+            background: var(--warning);
+        }
+
+        .card-net::before {
+            background: var(--primary);
+        }
+
+        .card h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
 
         .pos-topbar {
             background: linear-gradient(135deg, var(--primary), #3b82f6);
@@ -286,8 +368,17 @@
             box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
         }
 
-        .pos-topbar-logo { font-size: 18px; font-weight: 600; display: flex; align-items: center; }
-        .pos-topbar-actions { display: flex; gap: 12px; }
+        .pos-topbar-logo {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .pos-topbar-actions {
+            display: flex;
+            gap: 12px;
+        }
 
         .nav-btn {
             padding: 8px 16px;
@@ -302,33 +393,140 @@
             gap: 6px;
         }
 
-        .nav-btn-profit { background-color: var(--success); color: white; }
-        .nav-btn-exit { background-color: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.2); }
-        .card .amount { font-size: 28px; font-weight: 600; }
-        .flex-row { display: flex; gap: 15px; align-items: center; }
+        .nav-btn-profit {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .nav-btn-exit {
+            background-color: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card .amount {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
 
         @media screen and (max-width: 768px) {
-            html, body { overflow-x: hidden; }
-            .container { padding: 10px; }
-            .pos-topbar { flex-direction: column; gap: 10px; padding: 12px 15px; }
-            .pos-topbar-actions { width: 100%; gap: 8px; }
-            .nav-btn { flex: 1; justify-content: center; font-size: 13px; padding: 8px 5px; }
-            .header { flex-direction: column; align-items: stretch; gap: 12px; padding: 15px; }
-            .header h1 { font-size: 20px; justify-content: center; text-align: center; }
-            .header .flex-row { flex-wrap: wrap; justify-content: center; }
-            .tabs { gap: 5px; padding: 6px; }
-            .tab-btn { flex: 1 1 0; min-width: 0; font-size: 13px; padding: 10px 4px; }
-            .pos-grid { grid-template-columns: 1fr; }
-            .pos-grid > *, div[style*="grid-template-columns: 1fr 1fr"] > * { min-width: 0; }
-            div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
-            .menu-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
-            .panel { padding: 15px; min-width: 0; overflow-x: auto; }
-            th, td { padding: 8px 6px; font-size: 13px; }
-            .total-box { font-size: 22px; }
-            .dashboard-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .card { padding: 14px 8px; min-width: 0; }
-            .card .amount { font-size: 20px; word-break: break-word; }
-            #dashboardTab .flex-row { flex-wrap: wrap; gap: 10px; }
+
+            html,
+            body {
+                overflow-x: hidden;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .pos-topbar {
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px 15px;
+            }
+
+            .pos-topbar-actions {
+                width: 100%;
+                gap: 8px;
+            }
+
+            .nav-btn {
+                flex: 1;
+                justify-content: center;
+                font-size: 13px;
+                padding: 8px 5px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+                justify-content: center;
+                text-align: center;
+            }
+
+            .header .flex-row {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .tabs {
+                gap: 5px;
+                padding: 6px;
+            }
+
+            .tab-btn {
+                flex: 1 1 0;
+                min-width: 0;
+                font-size: 13px;
+                padding: 10px 4px;
+            }
+
+            .pos-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pos-grid>*,
+            div[style*="grid-template-columns: 1fr 1fr"]>* {
+                min-width: 0;
+            }
+
+            div[style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            .menu-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 10px;
+            }
+
+            .panel {
+                padding: 15px;
+                min-width: 0;
+                overflow-x: auto;
+            }
+
+            th,
+            td {
+                padding: 8px 6px;
+                font-size: 13px;
+            }
+
+            .total-box {
+                font-size: 22px;
+            }
+
+            .dashboard-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .card {
+                padding: 14px 8px;
+                min-width: 0;
+            }
+
+            .card .amount {
+                font-size: 20px;
+                word-break: break-word;
+            }
+
+            #dashboardTab .flex-row {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -386,19 +584,26 @@
                 </div>
 
                 <div>
-                    <div class="panel" style="margin-bottom: 20px; background: #f0f9ff; border-color: #bae6fd; padding: 15px 24px;">
+                    <div class="panel"
+                        style="margin-bottom: 20px; background: #f0f9ff; border-color: #bae6fd; padding: 15px 24px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 style="margin: 0; border: none; color: #0369a1; font-size: 16px;">🗓️ วันที่บันทึกรายการ:</h2>
-                            <input type="date" id="posDate" style="padding: 8px 15px; border-radius: 8px; border: 1px solid #7dd3fc; font-family:'Prompt'; font-size: 15px; outline: none; background: white; cursor: pointer;" onchange="updateDashboard()">
+                            <h2 style="margin: 0; border: none; color: #0369a1; font-size: 16px;">🗓️
+                                วันที่บันทึกรายการ:</h2>
+                            <input type="date" id="posDate"
+                                style="padding: 8px 15px; border-radius: 8px; border: 1px solid #7dd3fc; font-family:'Prompt'; font-size: 15px; outline: none; background: white; cursor: pointer;"
+                                onchange="updateDashboard()">
                         </div>
                     </div>
 
                     <div class="panel" style="margin-bottom: 20px;">
                         <h2>📝 ออเดอร์ปัจจุบัน</h2>
                         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <input type="text" id="customItemName" placeholder="ชื่อเมนู" style="flex: 2; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
-                            <input type="number" id="customItemPrice" placeholder="ราคา" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
-                            <button class="system-btn btn-save" onclick="addCustomToCart()" style="min-height: unset; padding: 8px 15px;">+ เพิ่ม</button>
+                            <input type="text" id="customItemName" placeholder="ชื่อเมนู"
+                                style="flex: 2; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
+                            <input type="number" id="customItemPrice" placeholder="ราคา"
+                                style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
+                            <button class="system-btn btn-save" onclick="addCustomToCart()"
+                                style="min-height: unset; padding: 8px 15px;">+ เพิ่ม</button>
                         </div>
                         <table>
                             <thead>
@@ -422,7 +627,8 @@
                                 <label>ยอดรวมที่ซื้อของ (บาท)</label>
                                 <input type="number" id="marketCost" placeholder="เช่น 500">
                             </div>
-                            <button class="btn-submit" style="background: #e11d48;" onclick="addMarketCost()">บันทึกค่าตลาด</button>
+                            <button class="btn-submit" style="background: #e11d48;"
+                                onclick="addMarketCost()">บันทึกค่าตลาด</button>
                         </div>
 
                         <div class="panel" style="background: #fffbeb; border-color: #fde68a;">
@@ -445,28 +651,43 @@
         <!-- 2. Dashboard -->
         <div id="dashboardTab" class="tab-content">
             <div class="panel">
-                <div class="flex-row" style="margin-bottom: 25px; background: #f8fafc; padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); justify-content: space-between;">
+                <div class="flex-row"
+                    style="margin-bottom: 25px; background: #f8fafc; padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); justify-content: space-between;">
                     <div style="display: flex; gap: 5px; background: #e5e7eb; padding: 4px; border-radius: 10px;">
-                        <button id="btnDaily" class="system-btn" style="background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px;" onclick="setDashMode('daily')">📅 วัน</button>
-                        <button id="btnMonthly" class="system-btn" style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px;" onclick="setDashMode('monthly')">📊 เดือน</button>
-                        <button id="btnRange" class="system-btn" style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px;" onclick="setDashMode('range')">🗓️ ช่วงเวลา</button>
+                        <button id="btnDaily" class="system-btn"
+                            style="background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px;"
+                            onclick="setDashMode('daily')">📅 วัน</button>
+                        <button id="btnMonthly" class="system-btn"
+                            style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px;"
+                            onclick="setDashMode('monthly')">📊 เดือน</button>
+                        <button id="btnRange" class="system-btn"
+                            style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px;"
+                            onclick="setDashMode('range')">🗓️ ช่วงเวลา</button>
                     </div>
 
                     <div id="dailyFilter" style="display: flex; gap: 10px; align-items: center;">
                         <span style="font-weight: 500; color: #4b5563;">เลือกวัน:</span>
-                        <input type="date" id="filterDate" style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
+                        <input type="date" id="filterDate"
+                            style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
+                            onchange="updateDashboard()">
                     </div>
 
                     <div id="monthlyFilter" style="display: none; gap: 10px; align-items: center;">
                         <span style="font-weight: 500; color: #4b5563;">เลือกเดือน:</span>
-                        <input type="month" id="filterMonth" style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
+                        <input type="month" id="filterMonth"
+                            style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
+                            onchange="updateDashboard()">
                     </div>
 
                     <div id="rangeFilter" style="display: none; gap: 10px; align-items: center;">
                         <span style="font-weight: 500; color: #4b5563;">ตั้งแต่:</span>
-                        <input type="date" id="filterStartDate" style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
+                        <input type="date" id="filterStartDate"
+                            style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
+                            onchange="updateDashboard()">
                         <span style="font-weight: 500; color: #4b5563;">ถึง:</span>
-                        <input type="date" id="filterEndDate" style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
+                        <input type="date" id="filterEndDate"
+                            style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
+                            onchange="updateDashboard()">
                     </div>
                 </div>
 
@@ -489,7 +710,9 @@
                     </div>
                 </div>
 
-                <h3 id="dashOrderTitle" style="color: var(--dark); margin-top: 30px; border-bottom: 2px solid var(--light); padding-bottom: 10px;">📋 รายการออเดอร์ (ข้อมูลสดจาก Database)</h3>
+                <h3 id="dashOrderTitle"
+                    style="color: var(--dark); margin-top: 30px; border-bottom: 2px solid var(--light); padding-bottom: 10px;">
+                    📋 รายการออเดอร์ (ข้อมูลสดจาก Database)</h3>
                 <table>
                     <thead>
                         <tr>
@@ -547,7 +770,8 @@
                         <label>ราคา (บาท)</label>
                         <input type="number" id="newMenuPrice" placeholder="40">
                     </div>
-                    <button class="btn-submit" onclick="addNewMenu()" style="flex: 1; background-color: var(--success); height: 44px;">บันทึกเมนู</button>
+                    <button class="btn-submit" onclick="addNewMenu()"
+                        style="flex: 1; background-color: var(--success); height: 44px;">บันทึกเมนู</button>
                 </div>
 
                 <h2 style="margin-top: 40px;">📋 รายการเมนูในระบบ</h2>
@@ -621,7 +845,7 @@
                                 if (Array.isArray(parsed)) {
                                     itemsText = parsed.map(i => `${i.name} x${i.qty}`).join(', ');
                                 }
-                            } catch (e) {}
+                            } catch (e) { }
 
                             return {
                                 id: o.id,
@@ -793,7 +1017,7 @@
                     renderCart();
                     await fetchPosDataFromDB();
                     updateDashboard();
-                    alert("บันทึกออเดอร์ลง Database สำเร็จ!");
+                    showToast("บันทึกออเดอร์ลง Database สำเร็จ!", 2000);
                 } else {
                     alert("เกิดข้อผิดพลาดในการบันทึกออเดอร์");
                 }
@@ -823,7 +1047,7 @@
                     document.getElementById('marketCost').value = '';
                     await fetchPosDataFromDB();
                     updateDashboard();
-                    alert("บันทึกค่าตลาดลง Database สำเร็จ!");
+                    showToast("บันทึกค่าตลาดลง Database สำเร็จ!", 2000);
                 } else {
                     alert("เกิดข้อผิดพลาดในการบันทึกค่าตลาด");
                 }
@@ -857,7 +1081,9 @@
                     document.getElementById('expenseCost').value = '';
                     await fetchPosDataFromDB();
                     updateDashboard();
-                    alert("บันทึกเบิกเงินลง Database สำเร็จ!");
+                    // ของเดิม: alert("บันทึกเบิกเงินลง Database สำเร็จ!");
+                    // เปลี่ยนเป็น:
+                    showToast("บันทึกเบิกเงินลง Database สำเร็จ!", 2000);
                 } else {
                     alert("เกิดข้อผิดพลาดในการบันทึกรายจ่าย");
                 }
@@ -1094,6 +1320,37 @@
 
             const defaultFileName = `ข้อมูลร้าน_${getTodayStr()}.xlsx`;
             XLSX.writeFile(wb, defaultFileName);
+        }
+        function showToast(message, duration = 2000) {
+            let toast = document.getElementById('customToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'customToast';
+                toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-family: 'Prompt', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        `;
+                document.body.appendChild(toast);
+            }
+            toast.innerText = message;
+            toast.style.display = 'block';
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => { toast.style.display = 'none'; }, 300);
+            }, duration);
         }
     </script>
 </body>
