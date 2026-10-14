@@ -216,11 +216,11 @@
                 if (data.success && data.partners.length > 0) {
                     const colors = ['#3b82f6', '#ef4444', '#10b981', '#a855f7', '#f59e0b', '#06b6d4'];
                     partners = data.partners.map((p, idx) => ({
-                        id: `p_${p.id}`,
-                        name: p.partner_name,
-                        percent: parseFloat(p.share_percentage),
-                        color: colors[idx % colors.length]
-                    }));
+    id: `p_${p.id}`,
+    name: p.name,  // <--- แก้ตรงนี้
+    percent: parseFloat(p.share_percent), // <--- แก้ตรงนี้
+    color: colors[idx % colors.length]
+}));
                 }
             } catch (err) {}
 
