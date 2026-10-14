@@ -903,6 +903,81 @@ app.post('/api/orders/batch', (req, res) => {
 // 🚀 START SERVER (ย้ายมาไว้ท้ายสุด)
 // ==========================================
 const PORT = process.env.PORT || 8080;
+// 🛒 1. ดึงข้อมูลสรุป POS สดจาก MySQL (แยกตามสาขา)
+app.get('/api/todlen/:branch/pos-summary', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { mode, date, month } = req.query;
+        const ordersTable = getBranchTable(branch, 'orders');
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+
+        let dateCondOrders = '', dateCondMarket = '', dateCondPetty = '';
+        let params = [];
+
+        if (mode === 'daily' && date) {
+            dateCondOrders = 'WHERE order_date = ?';
+            dateCondMarket = 'WHERE expense_date = ?';
+            dateCondPetty = 'WHERE expense_date = ?';
+            params = [date];
+        } else if (mode === 'monthly' && month) {
+            dateCondOrders = 'WHERE order_date LIKE ?';
+            dateCondMarket = 'WHERE expense_date LIKE ?';
+            dateCondPetty = 'WHERE expense_date LIKE ?';
+            params = [`${month}%`];
+        }
+
+        const [orders] = await promiseDb.query(`SELECT * FROM ${ordersTable} ${dateCondOrders} ORDER BY id DESC`, params);
+        const [marketExpenses] = await promiseDb.query(`SELECT * FROM ${marketTable} ${dateCondMarket} ORDER BY id DESC`, params);
+        const [pettyExpenses] = await promiseDb.query(`SELECT * FROM ${pettyTable} ${dateCondPetty} ORDER BY id DESC`, params);
+
+        const totalSales = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+        const totalMarket = marketExpenses.reduce((sum, m) => sum + parseFloat(m.total_amount || 0), 0);
+        const totalPetty = pettyExpenses.reduce((sum, p) => sum + parseFloat(p.total_amount || 0), 0);
+
+        res.json({ success: true, totalSales, totalMarket, totalPetty, orders, marketExpenses, pettyExpenses });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 📋 2. ดึงเมนูอาหารตามสาขา
+app.get('/api/todlen/:branch/menu-items', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const menuTable = getBranchTable(branch, 'menu');
+        const [items] = await promiseDb.query(`SELECT * FROM ${menuTable} ORDER BY id ASC`);
+        res.json({ success: true, items });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 🛒 3. บันทึกค่าตลาด
+app.post('/api/todlen/:branch/market-expenses', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { expenseDate, totalAmount } = req.body;
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        await promiseDb.query(`INSERT INTO ${marketTable} (expense_date, total_amount) VALUES (?, ?)`, [expenseDate, totalAmount]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 💸 4. บันทึกเบิกย่อย
+app.post('/api/todlen/:branch/petty-expenses', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { expenseDate, expenseTime, title, totalAmount } = req.body;
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+        await promiseDb.query(`INSERT INTO ${pettyTable} (expense_date, expense_time, title, totalAmount) VALUES (?, ?, ?, ?)`, [expenseDate, expenseTime, title, totalAmount]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 server.listen(PORT, () => {
     console.log(`เซิร์ฟเวอร์ทำงานเรียบร้อยที่ http://localhost:${PORT}`);
 });
