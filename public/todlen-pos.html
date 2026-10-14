@@ -419,7 +419,40 @@
 </head>
 
 <body>
+    <div class="bg-slate-900 text-white px-4 py-2.5 flex justify-between items-center text-sm shadow-md">
+        <div class="flex items-center gap-2 font-semibold">
+            <span>🍟 ร้านทอดเล่น (POS)</span>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="switchToProfit()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition text-xs flex items-center gap-1">
+                📊 สลับไประบบส่วนแบ่งกำไร
+            </button>
+            <button onclick="goToAdminOrLogout()"
+                class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+                กลับหน้าหลัก / ออก
+            </button>
+        </div>
+    </div>
 
+    <script>
+        function getBranchFromUrl() {
+            const parts = window.location.pathname.split('/');
+            return parts[2] || 'korat';
+        }
+        function switchToProfit() {
+            window.location.href = `/todlen/${getBranchFromUrl()}/profit`;
+        }
+        function goToAdminOrLogout() {
+            const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+            if (user.role === 'admin') {
+                window.location.href = '/todlen/select-branch';
+            } else {
+                sessionStorage.clear();
+                window.location.href = '/todlen/login';
+            }
+        }
+    </script>
     <div class="container">
         <!-- ส่วนหัว -->
         <div class="header">
@@ -662,7 +695,7 @@
 
     <script>
         // --- โครงสร้างฐานข้อมูล ---
-        let db = {Menu: [], Orders: [], Market: [], Expenses: []};
+        let db = { Menu: [], Orders: [], Market: [], Expenses: [] };
         let cart = [];
 
         // --- ระบบ AUTO-SAVE (บันทึกลง Chrome อัตโนมัติ) ---
@@ -677,8 +710,8 @@
             } else {
                 // ถ้าเข้ามาครั้งแรกสุดๆ จะให้มีเมนูตัวอย่าง
                 db.Menu = [
-                    {"ชื่อเมนู": "มาม่าเกาหลี", "ราคา": 50},
-                    {"ชื่อเมนู": "เฟรนฟราย", "ราคา": 39}
+                    { "ชื่อเมนู": "มาม่าเกาหลี", "ราคา": 50 },
+                    { "ชื่อเมนู": "เฟรนฟราย", "ราคา": 39 }
                 ];
                 saveToLocal();
             }
@@ -735,7 +768,7 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
+                const workbook = XLSX.read(data, { type: 'array' });
 
                 if (workbook.Sheets['Menu']) db.Menu = XLSX.utils.sheet_to_json(workbook.Sheets['Menu']);
                 if (workbook.Sheets['Orders']) db.Orders = XLSX.utils.sheet_to_json(workbook.Sheets['Orders']);
@@ -767,11 +800,11 @@
                         suggestedName: defaultFileName,
                         types: [{
                             description: 'Excel File',
-                            accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']}
+                            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
                         }]
                     });
                     const writable = await handle.createWritable();
-                    const excelBuffer = XLSX.write(wb, {bookType: 'xlsx', type: 'array'});
+                    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
                     await writable.write(excelBuffer);
                     await writable.close();
                     alert("บันทึกไฟล์สำเร็จ!");
@@ -803,7 +836,7 @@
         function addToCart(name, price) {
             const existing = cart.find(i => i.name === name);
             if (existing) existing.qty += 1;
-            else cart.push({name: name, price: price, qty: 1});
+            else cart.push({ name: name, price: price, qty: 1 });
             renderCart();
         }
 
@@ -813,37 +846,37 @@
         }
 
         // เพิ่มฟังก์ชันสำหรับเพิ่มเมนูแบบ Custom
-    function addCustomToCart() {
-        const name = document.getElementById('customItemName').value;
-        const price = parseFloat(document.getElementById('customItemPrice').value);
-        if (!name || isNaN(price)) return alert("กรุณาใส่ชื่อและราคาให้ครบครับ");
-        
-        cart.push({ name: name, price: price, qty: 1 });
-        renderCart();
-        
-        document.getElementById('customItemName').value = '';
-        document.getElementById('customItemPrice').value = '';
-    }
+        function addCustomToCart() {
+            const name = document.getElementById('customItemName').value;
+            const price = parseFloat(document.getElementById('customItemPrice').value);
+            if (!name || isNaN(price)) return alert("กรุณาใส่ชื่อและราคาให้ครบครับ");
 
-    // ฟังก์ชันสำหรับบันทึกการแก้ไขตอนพิมพ์ทับในตะกร้า
-    function updateCartItem(index, field, value) {
-        if (field === 'price') {
-            cart[index].price = parseFloat(value) || 0;
-        } else {
-            cart[index].name = value;
+            cart.push({ name: name, price: price, qty: 1 });
+            renderCart();
+
+            document.getElementById('customItemName').value = '';
+            document.getElementById('customItemPrice').value = '';
         }
-        renderCart();
-    }
 
-    // แก้ไขฟังก์ชัน renderCart เดิม ให้มี input สำหรับพิมพ์แก้ได้
-    function renderCart() {
-        const tbody = document.getElementById('cartBody');
-        tbody.innerHTML = '';
-        let total = 0;
-        cart.forEach((item, index) => {
-            const itemTotal = item.price * item.qty;
-            total += itemTotal;
-            tbody.innerHTML += `
+        // ฟังก์ชันสำหรับบันทึกการแก้ไขตอนพิมพ์ทับในตะกร้า
+        function updateCartItem(index, field, value) {
+            if (field === 'price') {
+                cart[index].price = parseFloat(value) || 0;
+            } else {
+                cart[index].name = value;
+            }
+            renderCart();
+        }
+
+        // แก้ไขฟังก์ชัน renderCart เดิม ให้มี input สำหรับพิมพ์แก้ได้
+        function renderCart() {
+            const tbody = document.getElementById('cartBody');
+            tbody.innerHTML = '';
+            let total = 0;
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal;
+                tbody.innerHTML += `
                 <tr>
                     <td>
                         <input type="text" value="${item.name}" onchange="updateCartItem(${index}, 'name', this.value)" style="width: 100%; padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: 'Prompt';">
@@ -857,9 +890,9 @@
                     </td>
                 </tr>
             `;
-        });
-        document.getElementById('cartTotal').innerText = total.toLocaleString();
-    }
+            });
+            document.getElementById('cartTotal').innerText = total.toLocaleString();
+        }
 
         function checkout() {
             if (cart.length === 0) return alert("ตะกร้าว่างเปล่า!");
@@ -867,7 +900,7 @@
             const itemsStr = cart.map(i => `${i.name} x${i.qty}`).join(', ');
 
             const recordDate = document.getElementById('posDate').value;
-            db.Orders.push({"วันที่": recordDate, "เวลา": getTimeStr(), "รายการ": itemsStr, "ยอดรวม": total});
+            db.Orders.push({ "วันที่": recordDate, "เวลา": getTimeStr(), "รายการ": itemsStr, "ยอดรวม": total });
 
             saveToLocal(); // บันทึกอัตโนมัติ
             cart = [];
@@ -879,7 +912,7 @@
             const cost = document.getElementById('marketCost').value;
             if (!cost) return alert("กรุณาใส่ราคา");
             const recordDate = document.getElementById('posDate').value;
-            db.Market.push({"วันที่": recordDate, "ยอดรวม": parseFloat(cost)});
+            db.Market.push({ "วันที่": recordDate, "ยอดรวม": parseFloat(cost) });
             saveToLocal(); // บันทึกอัตโนมัติ
             document.getElementById('marketCost').value = '';
         }
@@ -889,7 +922,7 @@
             const cost = document.getElementById('expenseCost').value;
             if (!name || !cost) return alert("กรุณาใส่ข้อมูลให้ครบ");
             const recordDate = document.getElementById('posDate').value;
-            db.Expenses.push({"วันที่": recordDate, "เวลา": getTimeStr(), "รายการ": name, "ยอดรวม": parseFloat(cost)});
+            db.Expenses.push({ "วันที่": recordDate, "เวลา": getTimeStr(), "รายการ": name, "ยอดรวม": parseFloat(cost) });
             saveToLocal(); // บันทึกอัตโนมัติ
             document.getElementById('expenseName').value = '';
             document.getElementById('expenseCost').value = '';
@@ -933,15 +966,15 @@
             // ใช้ map เพื่อจำ index ดั้งเดิมก่อนทำการ filter จะได้ลบ/แก้ไข ถูกตัว
             if (dashMode === 'daily') {
                 const targetDate = document.getElementById('filterDate').value;
-                targetOrders = db.Orders.map((o, i) => ({...o, idx: i})).filter(o => o['วันที่'] === targetDate);
-                targetMarket = db.Market.map((m, i) => ({...m, idx: i})).filter(m => m['วันที่'] === targetDate);
-                targetExpenses = db.Expenses.map((e, i) => ({...e, idx: i})).filter(e => e['วันที่'] === targetDate);
+                targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => o['วันที่'] === targetDate);
+                targetMarket = db.Market.map((m, i) => ({ ...m, idx: i })).filter(m => m['วันที่'] === targetDate);
+                targetExpenses = db.Expenses.map((e, i) => ({ ...e, idx: i })).filter(e => e['วันที่'] === targetDate);
                 displayTitle = `📋 รายการของวันที่ ${targetDate}`;
             } else if (dashMode === 'monthly') {
                 const targetMonth = document.getElementById('filterMonth').value;
-                targetOrders = db.Orders.map((o, i) => ({...o, idx: i})).filter(o => o['วันที่'] && o['วันที่'].startsWith(targetMonth));
-                targetMarket = db.Market.map((m, i) => ({...m, idx: i})).filter(m => m['วันที่'] && m['วันที่'].startsWith(targetMonth));
-                targetExpenses = db.Expenses.map((e, i) => ({...e, idx: i})).filter(e => e['วันที่'] && e['วันที่'].startsWith(targetMonth));
+                targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => o['วันที่'] && o['วันที่'].startsWith(targetMonth));
+                targetMarket = db.Market.map((m, i) => ({ ...m, idx: i })).filter(m => m['วันที่'] && m['วันที่'].startsWith(targetMonth));
+                targetExpenses = db.Expenses.map((e, i) => ({ ...e, idx: i })).filter(e => e['วันที่'] && e['วันที่'].startsWith(targetMonth));
                 displayTitle = `📊 สรุปรายการเดือน ${targetMonth}`;
             } else if (dashMode === 'range') {
                 const startDate = document.getElementById('filterStartDate').value;
@@ -952,9 +985,9 @@
                     return dateStr >= startDate && dateStr <= endDate;
                 };
 
-                targetOrders = db.Orders.map((o, i) => ({...o, idx: i})).filter(o => isBetween(o['วันที่']));
-                targetMarket = db.Market.map((m, i) => ({...m, idx: i})).filter(m => isBetween(m['วันที่']));
-                targetExpenses = db.Expenses.map((e, i) => ({...e, idx: i})).filter(e => isBetween(e['วันที่']));
+                targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => isBetween(o['วันที่']));
+                targetMarket = db.Market.map((m, i) => ({ ...m, idx: i })).filter(m => isBetween(m['วันที่']));
+                targetExpenses = db.Expenses.map((e, i) => ({ ...e, idx: i })).filter(e => isBetween(e['วันที่']));
                 displayTitle = `🗓️ สรุปรายการตั้งแต่ ${startDate} ถึง ${endDate}`;
             }
 
@@ -989,26 +1022,26 @@
 
         // --- ฟังก์ชันใหม่: แก้ไขและลบข้อมูล (เอาไปวางต่อจากฟังก์ชัน updateDashboard ได้เลย) ---
         function editRecord(type, index) {
-        const record = db[type][index];
-        if (!record) return;
+            const record = db[type][index];
+            if (!record) return;
 
-        // 1. ถ้าเป็นออเดอร์หรือเบิกเงิน ให้แก้ไขชื่อรายการได้ด้วย
-        if (type === 'Orders' || type === 'Expenses') {
-            let newName = prompt(`แก้ไขชื่อรายการ (ถ้าไม่แก้ให้กด OK ผ่านไป):`, record['รายการ']);
-            if (newName !== null && newName.trim() !== '') {
-                db[type][index]['รายการ'] = newName;
+            // 1. ถ้าเป็นออเดอร์หรือเบิกเงิน ให้แก้ไขชื่อรายการได้ด้วย
+            if (type === 'Orders' || type === 'Expenses') {
+                let newName = prompt(`แก้ไขชื่อรายการ (ถ้าไม่แก้ให้กด OK ผ่านไป):`, record['รายการ']);
+                if (newName !== null && newName.trim() !== '') {
+                    db[type][index]['รายการ'] = newName;
+                }
             }
-        }
 
-        // 2. ให้แก้ไขตัวเลขยอดรวม (เหมือนเดิม)
-        let newValue = prompt(`แก้ไขยอดรวม (บาท):`, record['ยอดรวม']);
-        if (newValue !== null && newValue.trim() !== '' && !isNaN(newValue)) {
-            db[type][index]['ยอดรวม'] = parseFloat(newValue);
+            // 2. ให้แก้ไขตัวเลขยอดรวม (เหมือนเดิม)
+            let newValue = prompt(`แก้ไขยอดรวม (บาท):`, record['ยอดรวม']);
+            if (newValue !== null && newValue.trim() !== '' && !isNaN(newValue)) {
+                db[type][index]['ยอดรวม'] = parseFloat(newValue);
+            }
+
+            saveToLocal();
+            updateDashboard();
         }
-        
-        saveToLocal();
-        updateDashboard();
-    }
 
         function deleteRecord(type, index) {
             if (confirm('ยืนยันที่จะลบรายการนี้ใช่หรือไม่?')) {
@@ -1033,7 +1066,7 @@
             const name = document.getElementById('newMenuName').value;
             const price = document.getElementById('newMenuPrice').value;
             if (!name || !price) return alert("กรุณาใส่ชื่อและราคา");
-            db.Menu.push({"ชื่อเมนู": name, "ราคา": parseFloat(price)});
+            db.Menu.push({ "ชื่อเมนู": name, "ราคา": parseFloat(price) });
             saveToLocal(); // บันทึกอัตโนมัติ
             document.getElementById('newMenuName').value = '';
             document.getElementById('newMenuPrice').value = '';

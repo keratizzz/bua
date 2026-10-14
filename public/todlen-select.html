@@ -3,42 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เลือกสาขา - ทอดเล่น Admin</title>
+    <title>ศูนย์ควบคุมผู้ดูแลระบบ - ทอดเล่น</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style> body { font-family: 'Prompt', sans-serif; } </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-6">
-    <div class="max-w-4xl mx-auto space-y-6">
-        <div class="bg-slate-900 text-white p-6 rounded-2xl flex justify-between items-center">
+<body class="bg-slate-100 min-h-screen p-4 md:p-6">
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="bg-slate-900 text-white p-6 rounded-2xl flex justify-between items-center shadow-lg">
             <div>
-                <h1 class="text-xl font-bold">👑 ศูนย์ควบคุมผู้ดูแลระบบ (Admin)</h1>
-                <p class="text-xs text-slate-400">เลือกสาขาเพื่อเข้าจัดการระบบ POS หรือระบบส่วนแบ่งกำไร</p>
+                <h1 class="text-xl font-bold flex items-center gap-2">👑 ศูนย์ควบคุมผู้ดูแลระบบ (Admin)</h1>
+                <p class="text-xs text-slate-400 mt-1">จัดการสาขา และสิทธิ์ผู้ใช้งานในระบบทอดเล่น</p>
             </div>
-            <button onclick="logout()" class="bg-slate-700 px-4 py-2 rounded-lg text-sm">ออกจากระบบ</button>
+            <button onclick="logout()" class="bg-slate-800 hover:bg-rose-600 px-4 py-2 rounded-xl text-sm transition font-medium">ออกจากระบบ</button>
         </div>
+
+        <!-- เลือกสาขา -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 class="text-lg font-bold text-slate-800 mb-4">📍 สาขาโคราช</h2>
-                <div class="space-y-3">
-                    <a href="/todlen/korat/pos" class="block text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl">🛒 หน้าจอ POS หน้าร้าน</a>
-                    <a href="/todlen/korat/profit" class="block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl">📊 หน้าระบบส่วนแบ่งกำไร</a>
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">📍 สาขาโคราช</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/todlen/korat/pos" class="text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-2 rounded-xl text-sm transition">🛒 POS หน้าร้าน</a>
+                    <a href="/todlen/korat/profit" class="text-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-2 rounded-xl text-sm transition">📊 ส่วนแบ่งกำไร</a>
                 </div>
             </div>
+
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 class="text-lg font-bold text-slate-800 mb-4">📍 สาขาบุรีรัมย์</h2>
-                <div class="space-y-3">
-                    <a href="/todlen/buriram/pos" class="block text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl">🛒 หน้าจอ POS หน้าร้าน</a>
-                    <a href="/todlen/buriram/profit" class="block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl">📊 หน้าระบบส่วนแบ่งกำไร (20% เข้าทุนโคราช)</a>
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">📍 สาขาบุรีรัมย์</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/todlen/buriram/pos" class="text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-2 rounded-xl text-sm transition">🛒 POS หน้าร้าน</a>
+                    <a href="/todlen/buriram/profit" class="text-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-2 rounded-xl text-sm transition">📊 ส่วนแบ่งกำไร (20% โคราช)</a>
                 </div>
+            </div>
+        </div>
+
+        <!-- ตารางจัดการผู้ใช้งาน -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">👤 จัดการบัญชีผู้ใช้งาน</h2>
+                    <p class="text-xs text-slate-500">เพิ่ม แก้ไข หรือลบสิทธิ์ผู้ใช้งานในระบบ</p>
+                </div>
+                <button onclick="openUserModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-1">
+                    + เพิ่มผู้ใช้ใหม่
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase">
+                            <th class="p-3">ชื่อแสดง</th>
+                            <th class="p-3">Username</th>
+                            <th class="p-3">บทบาท (Role)</th>
+                            <th class="p-3">สาขา</th>
+                            <th class="p-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody" class="divide-y divide-slate-100 text-sm">
+                        <!-- Data will load here -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+
+    <!-- Modal เพิ่ม/แก้ไข ผู้ใช้ -->
+    <div id="userModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 id="modalTitle" class="text-lg font-bold text-slate-800">เพิ่มผู้ใช้งานใหม่</h3>
+            <form onsubmit="saveUser(event)" class="space-y-3">
+                <input type="hidden" id="userId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อ-นามสกุล/ชื่อแสดง</label>
+                    <input type="text" id="modalName" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
+                    <input type="text" id="modalUsername" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Password <span id="pwdHint" class="text-slate-400 font-normal">(กรอกเมื่อต้องการตั้ง/เปลี่ยน)</span></label>
+                    <input type="password" id="modalPassword" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">บทบาท (Role)</label>
+                        <select id="modalRole" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="partner">Partner (หุ้นส่วน)</option>
+                            <option value="admin">Admin (แอดมิน)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">สาขา</label>
+                        <select id="modalBranch" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="korat">โคราช</option>
+                            <option value="buriram">บุรีรัมย์</option>
+                            <option value="">- ทั้งหมด (Admin) -</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="closeUserModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        let allUsers = [];
+
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/todlen/users');
+                const data = await res.json();
+                if (data.success) {
+                    allUsers = data.users;
+                    renderUsers();
+                }
+            } catch (err) { alert('โหลดผู้ใช้ไม่สำเร็จ'); }
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = allUsers.map(u => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-semibold text-slate-800">${u.name}</td>
+                    <td class="p-3 text-slate-600">${u.username}</td>
+                    <td class="p-3">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">
+                            ${u.role}
+                        </span>
+                    </td>
+                    <td class="p-3 text-slate-600">${u.branch ? (u.branch === 'korat' ? 'โคราช' : 'บุรีรัมย์') : 'ทุกสาขา'}</td>
+                    <td class="p-3 text-center space-x-2">
+                        <button onclick="editUser(${u.id})" class="text-indigo-600 hover:underline text-xs font-semibold">แก้ไข</button>
+                        <button onclick="deleteUser(${u.id}, '${u.username}')" class="text-rose-600 hover:underline text-xs font-semibold">ลบ</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openUserModal(user = null) {
+            document.getElementById('userId').value = user ? user.id : '';
+            document.getElementById('modalName').value = user ? user.name : '';
+            document.getElementById('modalUsername').value = user ? user.username : '';
+            document.getElementById('modalPassword').value = '';
+            document.getElementById('modalPassword').required = !user;
+            document.getElementById('modalRole').value = user ? user.role : 'partner';
+            document.getElementById('modalBranch').value = user ? (user.branch || '') : 'korat';
+            
+            document.getElementById('modalTitle').innerText = user ? 'แก้ไขผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่';
+            document.getElementById('userModal').classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.add('hidden');
+        }
+
+        function editUser(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (user) openUserModal(user);
+        }
+
+        async function saveUser(e) {
+            e.preventDefault();
+            const id = document.getElementById('userId').value;
+            const body = {
+                name: document.getElementById('modalName').value,
+                username: document.getElementById('modalUsername').value,
+                password: document.getElementById('modalPassword').value,
+                role: document.getElementById('modalRole').value,
+                branch: document.getElementById('modalBranch').value
+            };
+
+            const url = id ? `/api/todlen/users/${id}` : '/api/todlen/users';
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeUserModal();
+                loadUsers();
+            } else { alert(data.message); }
+        }
+
+        async function deleteUser(id, username) {
+            if (!confirm(`ยืนยันการลบผู้ใช้ "${username}" ใช่หรือไม่?`)) return;
+            const res = await fetch(`/api/todlen/users/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) loadUsers();
+            else alert(data.message);
+        }
+
         function logout() {
             sessionStorage.clear();
             window.location.href = '/todlen/login';
         }
+
+        loadUsers();
     </script>
 </body>
 </html>

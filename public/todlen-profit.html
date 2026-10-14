@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,18 +29,100 @@
         }
     </script>
     <style>
-        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; }
-        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        input:checked + .slider { background-color: #10b981; }
-        input:checked + .slider:before { transform: translateX(24px); }
-        .card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked+.slider {
+            background-color: #10b981;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(24px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
     </style>
 </head>
-<body class="text-slate-800 antialiased min-h-screen">
 
+<body class="text-slate-800 antialiased min-h-screen">
+    <div class="bg-slate-900 text-white px-4 py-2.5 flex justify-between items-center text-sm shadow-md">
+        <div class="flex items-center gap-2 font-semibold">
+            <span>📊 ระบบส่วนแบ่งกำไร</span>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="switchToPOS()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition text-xs flex items-center gap-1">
+                🛒 สลับไปหน้าจอ POS หน้าร้าน
+            </button>
+            <button onclick="goToAdminOrLogout()"
+                class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+                กลับหน้าหลัก / ออก
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function getBranchFromUrl() {
+            const parts = window.location.pathname.split('/');
+            return parts[2] || 'korat';
+        }
+        function switchToPOS() {
+            window.location.href = `/todlen/${getBranchFromUrl()}/pos`;
+        }
+        function goToAdminOrLogout() {
+            const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+            if (user.role === 'admin') {
+                window.location.href = '/todlen/select-branch';
+            } else {
+                sessionStorage.clear();
+                window.location.href = '/todlen/login';
+            }
+        }
+    </script>
     <header class="bg-slate-900 text-white shadow-md">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
@@ -48,18 +131,22 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">ระบบบันทึกกำไร & เช็คชื่อรายวัน</h1>
-                    <p class="text-xs text-brand-100">หัก 30% เข้าร้านก่อนแบ่ง / วันขาดทุนดึงทุนร้านมาจ่าย / เงินคนขาดแบ่งคนมา 80%</p>
+                    <p class="text-xs text-brand-100">หัก 30% เข้าร้านก่อนแบ่ง / วันขาดทุนดึงทุนร้านมาจ่าย /
+                        เงินคนขาดแบ่งคนมา 80%</p>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="document.getElementById('fileInput').click()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                <button onclick="document.getElementById('fileInput').click()"
+                    class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm transition flex items-center gap-2">
                     <i class="fa-solid fa-upload"></i> Restore
                 </button>
                 <input type="file" id="fileInput" accept=".json" class="hidden" onchange="restoreData(event)">
-                <button onclick="backupData()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                <button onclick="backupData()"
+                    class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm transition flex items-center gap-2">
                     <i class="fa-solid fa-download"></i> Backup
                 </button>
-                <button onclick="exportCSV()" class="bg-brand-600 hover:bg-brand-500 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="exportCSV()"
+                    class="bg-brand-600 hover:bg-brand-500 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     <i class="fa-solid fa-file-csv"></i> ส่งออก Excel
                 </button>
             </div>
@@ -74,33 +161,40 @@
                     <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-pen-to-square text-brand-500"></i> บันทึกกำไรประจำวัน
                     </h2>
-                    
+
                     <form id="recordForm" onsubmit="saveRecord(event)">
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">วันที่</label>
-                                <input type="date" id="inputDate" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                                <input type="date" id="inputDate" required
+                                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500">
                             </div>
-                            
+
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">กำไรสุทธิของวันนี้ (บาท)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">กำไรสุทธิของวันนี้
+                                    (บาท)</label>
                                 <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">฿</span>
+                                    <span
+                                        class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">฿</span>
                                     <!-- นำ min="0" ออก เพื่อให้กรอกเลขติดลบได้ -->
-                                    <input type="number" id="inputProfit" required step="any" placeholder="เช่น 2500 หรือ -50" class="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 font-semibold text-lg">
+                                    <input type="number" id="inputProfit" required step="any"
+                                        placeholder="เช่น 2500 หรือ -50"
+                                        class="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 font-semibold text-lg">
                                 </div>
                                 <p class="text-xs text-slate-500 mt-1">*กรณีขาดทุนให้ใส่เครื่องหมายลบ เช่น -50</p>
                             </div>
 
                             <!-- Attendance Toggles -->
                             <div class="pt-4 border-t border-slate-100">
-                                <label class="block text-sm font-medium text-slate-700 mb-3">เช็คชื่อคนทำงาน (เปิด = มา / ปิด = ขาด)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-3">เช็คชื่อคนทำงาน (เปิด = มา
+                                    / ปิด = ขาด)</label>
                                 <div class="space-y-3" id="attendanceContainer">
                                     <!-- Populated by JS -->
                                 </div>
                             </div>
 
-                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl shadow transition mt-6 flex items-center justify-center gap-2">
+                            <button type="submit"
+                                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl shadow transition mt-6 flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-save"></i> บันทึกข้อมูลวันนี้
                             </button>
                         </div>
@@ -109,16 +203,21 @@
             </div>
 
             <div class="lg:col-span-8 space-y-6">
-                
+
                 <!-- Filter Section -->
                 <div class="card p-5 bg-white flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="fa-solid fa-calendar-days text-xl"></i></div>
+                        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i
+                                class="fa-solid fa-calendar-days text-xl"></i></div>
                         <h2 class="text-lg font-bold text-slate-800" id="currentViewTitle">สรุปยอด</h2>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
-                        <input type="month" id="filterMonth" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-auto" onchange="updateDashboard()">
-                        <select id="filterPeriod" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium text-brand-700 w-full sm:w-auto" onchange="updateDashboard()">
+                        <input type="month" id="filterMonth"
+                            class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-auto"
+                            onchange="updateDashboard()">
+                        <select id="filterPeriod"
+                            class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium text-brand-700 w-full sm:w-auto"
+                            onchange="updateDashboard()">
                             <option value="1">รอบ 1 (วันที่ 1 - 15)</option>
                             <option value="2">รอบ 2 (วันที่ 16 - สิ้นเดือน)</option>
                         </select>
@@ -169,7 +268,8 @@
     </main>
 
     <!-- Notification Toast -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-5 right-5 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 translate-y-20 opacity-0 transition-all duration-300 z-50">
         <i class="fa-solid fa-circle-info text-brand-400 text-lg"></i>
         <span id="toastMsg" class="text-sm font-medium">Message</span>
     </div>
@@ -186,12 +286,12 @@
 
         const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
-        window.onload = function() {
+        window.onload = function () {
             const now = new Date();
             const yyyy = now.getFullYear();
             const mm = String(now.getMonth() + 1).padStart(2, '0');
             const dd = String(now.getDate()).padStart(2, '0');
-            
+
             document.getElementById('inputDate').value = `${yyyy}-${mm}-${dd}`;
             document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
             document.getElementById('filterPeriod').value = now.getDate() <= 15 ? "1" : "2";
@@ -204,10 +304,10 @@
         function renderAttendanceToggles() {
             const container = document.getElementById('attendanceContainer');
             container.innerHTML = '';
-            
+
             partners.forEach(p => {
                 document.getElementById(`th-${p.id}`).innerText = `${p.name} (${p.percent}%)`;
-                
+
                 container.innerHTML += `
                     <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                         <div class="flex items-center gap-3">
@@ -225,10 +325,10 @@
 
         function saveRecord(e) {
             e.preventDefault();
-            
+
             const dateStr = document.getElementById('inputDate').value;
             const profit = parseFloat(document.getElementById('inputProfit').value);
-            
+
             // เช็คว่ากรอกข้อมูลครบถ้วน และ profit ต้องเป็นตัวเลข (ยอมรับเลขติดลบได้)
             if (!dateStr || isNaN(profit)) return;
 
@@ -249,16 +349,16 @@
 
             if (profit < 0) {
                 // กรณีติดลบ (ขาดทุน) -> ดึงเงินจากทุนร้านมาจ่าย (เข้าร้านแบบติดลบ)
-                shopFund = profit; 
+                shopFund = profit;
                 // ทุกคนได้เงิน = 0 ไม่ต้องคำนวณแบ่งเปอร์เซ็นต์
             } else {
                 // กรณีมีกำไร (>= 0)
                 // 1. หัก 30% เข้าร้านก่อน
                 shopFund = profit * 0.30;
-                
+
                 // 2. เหลือ 70% นำมาแบ่งให้หุ้นส่วน
                 let distributableProfit = profit * 0.70;
-                
+
                 let absentPool = 0;
                 let presentPartners = [];
 
@@ -266,7 +366,7 @@
                 partners.forEach(p => {
                     const isPresent = attendances[p.id];
                     let shareAmount = distributableProfit * (p.percent / 100);
-                    
+
                     if (isPresent) {
                         payouts[p.id] = shareAmount;
                         presentPartners.push(p.id);
@@ -309,13 +409,13 @@
             records.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             saveToLocalStorage();
-            
+
             const rDate = new Date(dateStr);
             const rYear = rDate.getFullYear();
             const rMonth = String(rDate.getMonth() + 1).padStart(2, '0');
             document.getElementById('filterMonth').value = `${rYear}-${rMonth}`;
             document.getElementById('filterPeriod').value = rDate.getDate() <= 15 ? "1" : "2";
-            
+
             updateDashboard();
 
             showToast(`บันทึกข้อมูลวันที่ ${dateStr} เรียบร้อย`);
@@ -325,7 +425,7 @@
         function updateDashboard() {
             const filterMonthStr = document.getElementById('filterMonth').value;
             const filterPeriod = parseInt(document.getElementById('filterPeriod').value);
-            
+
             if (!filterMonthStr) return;
             const [year, month] = filterMonthStr.split('-');
             const yearNum = parseInt(year);
@@ -337,7 +437,7 @@
             const filteredRecords = records.filter(r => {
                 const rDate = new Date(r.date);
                 if (rDate.getFullYear() !== yearNum || rDate.getMonth() !== monthNum) return false;
-                
+
                 const d = rDate.getDate();
                 if (filterPeriod === 1) return d >= 1 && d <= 15;
                 if (filterPeriod === 2) return d >= 16;
@@ -361,21 +461,21 @@
                 filteredRecords.forEach(r => {
                     sumProfit += r.profit;
                     sumShopFund += r.shopFund;
-                    
+
                     let partnerCols = '';
                     partners.forEach(p => {
                         const amt = r.payouts[p.id];
                         const isPresent = r.attendances ? r.attendances[p.id] : amt > 0;
                         sumPayouts[p.id] += amt;
 
-                        const presentHtml = isPresent 
-                            ? `฿${formatNo(amt)}` 
+                        const presentHtml = isPresent
+                            ? `฿${formatNo(amt)}`
                             : `<span class="text-xs text-rose-500 font-semibold bg-rose-50 px-1.5 py-0.5 rounded">ขาด</span>`;
-                        
+
                         // ถ้ากำไรติดลบ และมาทำงาน จะแสดงเป็น ฿0 ไม่แสดงเป็นขาด
                         const displayHtml = (r.profit < 0 && isPresent) ? '฿0' : presentHtml;
 
-                        partnerCols += `<td class="px-4 py-3 text-right text-slate-700 ${!isPresent ? 'bg-rose-50/30':''}">${displayHtml}</td>`;
+                        partnerCols += `<td class="px-4 py-3 text-right text-slate-700 ${!isPresent ? 'bg-rose-50/30' : ''}">${displayHtml}</td>`;
                     });
 
                     // ตกแต่งสีของเงินทุนร้าน (เขียว/แดง ตามค่าบวก/ลบ)
@@ -482,7 +582,7 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 try {
                     const importedData = JSON.parse(e.target.result);
                     if (Array.isArray(importedData)) {
@@ -504,7 +604,7 @@
         function exportCSV() {
             const filterMonthStr = document.getElementById('filterMonth').value;
             const filterPeriod = parseInt(document.getElementById('filterPeriod').value);
-            
+
             const [year, month] = filterMonthStr.split('-');
             const yearNum = parseInt(year);
             const monthNum = parseInt(month) - 1;
@@ -567,4 +667,5 @@
         }
     </script>
 </body>
+
 </html>

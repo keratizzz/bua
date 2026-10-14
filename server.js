@@ -81,7 +81,7 @@ app.post('/api/todlen/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         const [rows] = await promiseDb.query('SELECT * FROM todlen_users WHERE username = ?', [username]);
-        
+
         if (rows.length === 0 || rows[0].password_hash !== password) {
             return res.status(401).json({ success: false, message: 'Username หรือ Password ไม่ถูกต้อง' });
         }
@@ -607,7 +607,74 @@ app.post('/api/orders/batch', (req, res) => {
         });
     });
 });
+// ==========================================
+// 👥 API SYSTEM: จัดการผู้ใช้งาน (สำหรับ Admin)
+// ==========================================
 
+// 1. ดึงรายชื่อผู้ใช้ทั้งหมด
+app.get('/api/todlen/users', async (req, res) => {
+    try {
+        const [users] = await promiseDb.query('SELECT id, name, username, role, branch, created_at FROM todlen_users ORDER BY id DESC');
+        res.json({ success: true, users });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 2. เพิ่มผู้ใช้งานใหม่
+app.post('/api/todlen/users', async (req, res) => {
+    try {
+        const { name, username, password, role, branch } = req.body;
+        if (!name || !username || !password || !role) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+        }
+        const [result] = await promiseDb.query(
+            'INSERT INTO todlen_users (name, username, password_hash, role, branch) VALUES (?, ?, ?, ?, ?)',
+            [name, username, password, role, branch || null]
+        );
+        res.json({ success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว', userId: result.insertId });
+    } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ success: false, message: 'Username นี้ถูกใช้งานแล้วในระบบ' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. แก้ไขข้อมูลผู้ใช้งาน
+app.put('/api/todlen/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, username, password, role, branch } = req.body;
+
+        let sql = 'UPDATE todlen_users SET name = ?, username = ?, role = ?, branch = ?';
+        let params = [name, username, role, branch || null];
+
+        if (password && password.trim() !== '') {
+            sql += ', password_hash = ?';
+            params.push(password);
+        }
+
+        sql += ' WHERE id = ?';
+        params.push(id);
+
+        await promiseDb.query(sql, params);
+        res.json({ success: true, message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 4. ลบผู้ใช้งาน
+app.delete('/api/todlen/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await promiseDb.query('DELETE FROM todlen_users WHERE id = ?', [id]);
+        res.json({ success: true, message: 'ลบผู้ใช้งานเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 // ==========================================
 // 🚀 START SERVER
 // ==========================================
