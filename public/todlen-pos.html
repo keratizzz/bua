@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ทอดเล่น-ไหม้ทอดทิ้ง-30กันยา</title>
+    <title>ทอดเล่น-ไหม้ทอดทิ้ง POS ONLINE</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script src="xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #4361ee;
@@ -335,7 +335,7 @@
 
 <body>
     <div class="pos-topbar">
-        <div class="pos-topbar-logo">🍟 ร้านทอดเล่น (POS ONLINE)</div>
+        <div class="pos-topbar-logo" id="posTitleLogo">🍟 ร้านทอดเล่น (POS ONLINE)</div>
         <div class="pos-topbar-actions">
             <button onclick="switchToProfit()" class="nav-btn nav-btn-profit">📊 สลับไประบบส่วนแบ่งกำไร</button>
             <button onclick="goToAdminOrLogout()" class="nav-btn nav-btn-exit">🏠 กลับหน้าหลัก / ออก</button>
@@ -493,7 +493,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 100px;">เวลา</th>
+                            <th style="width: 120px;">วัน/เวลา</th>
                             <th>รายการอาหาร</th>
                             <th class="text-right" style="width: 120px;">ยอดรวม (บาท)</th>
                             <th style="width: 80px; text-align: center;">จัดการ</th>
@@ -521,7 +521,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>เวลา</th>
+                                    <th style="width: 120px;">วัน/เวลา</th>
                                     <th>รายการ</th>
                                     <th class="text-right">ยอด (บาท)</th>
                                     <th style="width: 80px; text-align: center;">จัดการ</th>
@@ -583,18 +583,18 @@
             }
         })();
 
-        // โครงสร้างสำหรับเก็บข้อมูลฝั่ง Client UI ชั่วคราว (ดึงสดจาก DB ทั้งหมด)
         let db = { Menu: [], Orders: [], Market: [], Expenses: [] };
         let cart = [];
 
         // 🌐 ดึงเมนูสดจาก MySQL Database
         async function fetchMenusFromDB() {
+            const branch = getBranchFromUrl();
             try {
-                const res = await fetch('/api/menus');
+                const res = await fetch(`/api/todlen/${branch}/menu-items`);
                 if (res.ok) {
                     const data = await res.json();
-                    if (Array.isArray(data)) {
-                        db.Menu = data.map(m => ({
+                    if (data.success && Array.isArray(data.items)) {
+                        db.Menu = data.items.map(m => ({
                             id: m.id,
                             "ชื่อเมนู": m.name,
                             "ราคา": parseFloat(m.price)
@@ -606,7 +606,57 @@
             }
         }
 
+        // 🌐 ดึงออเดอร์ และรายจ่ายทั้งหมดสดตรงจาก MySQL Database
+        async function fetchPosDataFromDB() {
+            const branch = getBranchFromUrl();
+            try {
+                const res = await fetch(`/api/todlen/${branch}/pos-summary?mode=all`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        db.Orders = (data.orders || []).map(o => {
+                            let itemsText = o.order_items;
+                            try {
+                                const parsed = typeof o.order_items === 'string' ? JSON.parse(o.order_items) : o.order_items;
+                                if (Array.isArray(parsed)) {
+                                    itemsText = parsed.map(i => `${i.name} x${i.qty}`).join(', ');
+                                }
+                            } catch (e) {}
+
+                            return {
+                                id: o.id,
+                                "วันที่": o.order_date.split('T')[0],
+                                "เวลา": o.order_time ? o.order_time.substring(0, 5) : '',
+                                "รายการ": itemsText,
+                                "ยอดรวม": parseFloat(o.total_amount)
+                            };
+                        });
+
+                        db.Market = (data.marketExpenses || []).map(m => ({
+                            id: m.id,
+                            "วันที่": m.expense_date.split('T')[0],
+                            "ยอดรวม": parseFloat(m.total_amount)
+                        }));
+
+                        db.Expenses = (data.pettyExpenses || []).map(e => ({
+                            id: e.id,
+                            "วันที่": e.expense_date.split('T')[0],
+                            "เวลา": e.expense_time ? e.expense_time.substring(0, 5) : '',
+                            "รายการ": e.title,
+                            "ยอดรวม": parseFloat(e.total_amount)
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.error("ดึงข้อมูล POS ไม่สำเร็จ:", err);
+            }
+        }
+
         window.onload = async function () {
+            const branch = getBranchFromUrl();
+            const branchName = branch === 'korat' ? 'โคราช' : 'บุรีรัมย์';
+            document.getElementById('posTitleLogo').innerText = `🍟 ร้านทอดเล่น สาขา${branchName} (POS ONLINE)`;
+
             const today = new Date();
             document.getElementById('filterDate').valueAsDate = today;
             document.getElementById('posDate').valueAsDate = today;
@@ -618,11 +668,13 @@
             document.getElementById('filterStartDate').valueAsDate = today;
             document.getElementById('filterEndDate').valueAsDate = today;
 
-            // 🚀 โหลดข้อมูลเมนูสดและข้อมูลขายสดจาก MySQL เมื่อเปิดหน้าเว็บ
+            // 🚀 โหลดข้อมูลสดจาก MySQL ทั้งหมด
             await fetchMenusFromDB();
+            await fetchPosDataFromDB();
+
             renderMenus();
             renderMenuManage();
-            await updateDashboard();
+            updateDashboard();
         };
 
         function switchTab(tabId) {
@@ -634,6 +686,11 @@
 
             if (tabId === 'dashboardTab') updateDashboard();
             if (tabId === 'menuManageTab') renderMenuManage();
+        }
+
+        function getTodayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
         function getTimeStr() {
@@ -723,9 +780,10 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        customerName: 'ลูกค้าหน้าร้าน',
                         orderDate: recordDate,
-                        orderTime: getTimeStr(),
-                        items: cart,
+                        orderTime: getTimeStr() + ':00',
+                        orderItems: cart,
                         totalAmount: total
                     })
                 });
@@ -733,7 +791,8 @@
                 if (res.ok) {
                     cart = [];
                     renderCart();
-                    await updateDashboard();
+                    await fetchPosDataFromDB();
+                    updateDashboard();
                     alert("บันทึกออเดอร์ลง Database สำเร็จ!");
                 } else {
                     alert("เกิดข้อผิดพลาดในการบันทึกออเดอร์");
@@ -746,7 +805,7 @@
         // 🛒 บันทึกค่าตลาดส่งตรงลง MySQL Database
         async function addMarketCost() {
             const cost = document.getElementById('marketCost').value;
-            if (!cost) return alert("กรุณาใส่ราคา");
+            if (!cost || isNaN(cost) || parseFloat(cost) <= 0) return alert("กรุณาใส่ราคาให้ถูกต้อง");
             const recordDate = document.getElementById('posDate').value;
             const branch = getBranchFromUrl();
 
@@ -754,16 +813,22 @@
                 const res = await fetch(`/api/todlen/${branch}/market-expenses`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ expenseDate: recordDate, totalAmount: parseFloat(cost) })
+                    body: JSON.stringify({
+                        expenseDate: recordDate,
+                        totalAmount: parseFloat(cost)
+                    })
                 });
 
                 if (res.ok) {
                     document.getElementById('marketCost').value = '';
-                    await updateDashboard();
-                    alert("บันทึกค่าตลาดเรียบร้อย");
+                    await fetchPosDataFromDB();
+                    updateDashboard();
+                    alert("บันทึกค่าตลาดลง Database สำเร็จ!");
+                } else {
+                    alert("เกิดข้อผิดพลาดในการบันทึกค่าตลาด");
                 }
             } catch (err) {
-                alert("บันทึกค่าตลาดไม่สำเร็จ");
+                alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
             }
         }
 
@@ -771,7 +836,7 @@
         async function addExpense() {
             const name = document.getElementById('expenseName').value;
             const cost = document.getElementById('expenseCost').value;
-            if (!name || !cost) return alert("กรุณาใส่ข้อมูลให้ครบ");
+            if (!name || !cost || isNaN(cost) || parseFloat(cost) <= 0) return alert("กรุณาใส่ข้อมูลให้ครบถ้วน");
             const recordDate = document.getElementById('posDate').value;
             const branch = getBranchFromUrl();
 
@@ -781,7 +846,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         expenseDate: recordDate,
-                        expenseTime: getTimeStr(),
+                        expenseTime: getTimeStr() + ':00',
                         title: name,
                         totalAmount: parseFloat(cost)
                     })
@@ -790,11 +855,14 @@
                 if (res.ok) {
                     document.getElementById('expenseName').value = '';
                     document.getElementById('expenseCost').value = '';
-                    await updateDashboard();
-                    alert("บันทึกการเบิกเงินเรียบร้อย");
+                    await fetchPosDataFromDB();
+                    updateDashboard();
+                    alert("บันทึกเบิกเงินลง Database สำเร็จ!");
+                } else {
+                    alert("เกิดข้อผิดพลาดในการบันทึกรายจ่าย");
                 }
             } catch (err) {
-                alert("บันทึกการเบิกเงินไม่สำเร็จ");
+                alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
             }
         }
 
@@ -823,29 +891,40 @@
             updateDashboard();
         }
 
-        // 📊 ดึงประวัติรายการขายและรายจ่ายทั้งหมดตรงจาก MySQL Database
-        async function updateDashboard() {
-            const branch = getBranchFromUrl();
-            const targetDate = document.getElementById('filterDate').value || document.getElementById('posDate').value;
-            let displayTitle = `📋 รายการของวันที่ ${targetDate}`;
+        function updateDashboard() {
+            let targetOrders = [], targetMarket = [], targetExpenses = [];
+            let displayTitle = "";
 
-            try {
-                const res = await fetch(`/api/todlen/${branch}/pos-records?date=${targetDate}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success) {
-                        db.Orders = data.orders || [];
-                        db.Market = data.market || [];
-                        db.Expenses = data.petty || [];
-                    }
-                }
-            } catch (err) {
-                console.error("ดึงข้อมูล POS ล้มเหลว:", err);
+            if (dashMode === 'daily') {
+                const targetDate = document.getElementById('filterDate').value;
+                targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => o['วันที่'] === targetDate);
+                targetMarket = db.Market.map((m, i) => ({ ...m, idx: i })).filter(m => m['วันที่'] === targetDate);
+                targetExpenses = db.Expenses.map((e, i) => ({ ...e, idx: i })).filter(e => e['วันที่'] === targetDate);
+                displayTitle = `📋 รายการของวันที่ ${targetDate}`;
+            } else if (dashMode === 'monthly') {
+                const targetMonth = document.getElementById('filterMonth').value;
+                targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => o['วันที่'] && o['วันที่'].startsWith(targetMonth));
+                targetMarket = db.Market.map((m, i) => ({ ...m, idx: i })).filter(m => m['วันที่'] && m['วันที่'].startsWith(targetMonth));
+                targetExpenses = db.Expenses.map((e, i) => ({ ...e, idx: i })).filter(e => e['วันที่'] && e['วันที่'].startsWith(targetMonth));
+                displayTitle = `📊 สรุปรายการเดือน ${targetMonth}`;
+            } else if (dashMode === 'range') {
+                const startDate = document.getElementById('filterStartDate').value;
+                const endDate = document.getElementById('filterEndDate').value;
+
+                const isBetween = (dateStr) => {
+                    if (!dateStr) return false;
+                    return dateStr >= startDate && dateStr <= endDate;
+                };
+
+                targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => isBetween(o['วันที่']));
+                targetMarket = db.Market.map((m, i) => ({ ...m, idx: i })).filter(m => isBetween(m['วันที่']));
+                targetExpenses = db.Expenses.map((e, i) => ({ ...e, idx: i })).filter(e => isBetween(e['วันที่']));
+                displayTitle = `🗓️ สรุปรายการตั้งแต่ ${startDate} ถึง ${endDate}`;
             }
 
-            const totalSales = db.Orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
-            const totalMarket = db.Market.reduce((sum, m) => sum + parseFloat(m.total_amount || 0), 0);
-            const totalExpenses = db.Expenses.reduce((sum, e) => sum + parseFloat(e.total_amount || 0), 0);
+            const totalSales = targetOrders.reduce((sum, o) => sum + (o['ยอดรวม'] || 0), 0);
+            const totalMarket = targetMarket.reduce((sum, m) => sum + (m['ยอดรวม'] || 0), 0);
+            const totalExpenses = targetExpenses.reduce((sum, e) => sum + (e['ยอดรวม'] || 0), 0);
             const netProfit = totalSales - totalMarket - totalExpenses;
 
             document.getElementById('dashSales').innerText = `${totalSales.toLocaleString()} ฿`;
@@ -854,38 +933,71 @@
             document.getElementById('dashNet').innerText = `${netProfit.toLocaleString()} ฿`;
             document.getElementById('dashOrderTitle').innerText = displayTitle;
 
-            const actionBtns = (type, id) => `
+            const actionBtns = (type, idx) => `
             <td style="text-align: center; white-space: nowrap;">
-                <button class="delete-btn" style="padding: 4px 8px; font-size: 12px; display: inline-block;" onclick="deleteRecord('${type}', ${id})">ลบ</button>
+                <button class="system-btn btn-save" style="padding: 4px 8px; font-size: 12px; display: inline-block;" onclick="editRecord('${type}', ${idx})">แก้</button>
+                <button class="delete-btn" style="padding: 4px 8px; font-size: 12px; display: inline-block; margin-left: 3px;" onclick="deleteRecord('${type}', ${idx})">ลบ</button>
             </td>`;
 
-            document.getElementById('dashOrdersTable').innerHTML = db.Orders.map(o => {
-                let itemsList = '';
-                try {
-                    const items = typeof o.order_items === 'string' ? JSON.parse(o.order_items) : o.order_items;
-                    itemsList = Array.isArray(items) ? items.map(i => `${i.name} x${i.qty}`).join(', ') : o.order_items;
-                } catch(e) { itemsList = o.order_items || '-'; }
-                return `<tr><td>${o.order_time ? o.order_time.slice(0,5) : '-'}</td><td>${itemsList}</td><td class="text-right">${parseFloat(o.total_amount).toLocaleString()}</td>${actionBtns('Orders', o.id)}</tr>`;
-            }).join('') || '<tr><td colspan="4" class="text-center">ไม่มีรายการขายวันนี้</td></tr>';
-
-            document.getElementById('dashMarketTable').innerHTML = db.Market.map(m => `<tr><td>${m.expense_date}</td><td class="text-right">${parseFloat(m.total_amount).toLocaleString()}</td>${actionBtns('Market', m.id)}</tr>`).join('') || '<tr><td colspan="3" class="text-center">ไม่มีรายการ</td></tr>';
-
-            document.getElementById('dashExpensesTable').innerHTML = db.Expenses.map(e => `<tr><td>${e.expense_time ? e.expense_time.slice(0,5) : '-'}</td><td>${e.title}</td><td class="text-right">${parseFloat(e.total_amount).toLocaleString()}</td>${actionBtns('Expenses', e.id)}</tr>`).join('') || '<tr><td colspan="4" class="text-center">ไม่มีรายการ</td></tr>';
+            if (dashMode === 'monthly' || dashMode === 'range') {
+                document.getElementById('dashOrdersTable').innerHTML = targetOrders.map(o => `<tr><td><span style="font-size:12px;color:#6b7280;">${o['วันที่']}</span><br>${o['เวลา']}</td><td>${o['รายการ']}</td><td class="text-right">${o['ยอดรวม'].toLocaleString()}</td>${actionBtns('Orders', o.idx)}</tr>`).join('');
+                document.getElementById('dashMarketTable').innerHTML = targetMarket.map(m => `<tr><td>${m['วันที่']}</td><td class="text-right">${m['ยอดรวม'].toLocaleString()}</td>${actionBtns('Market', m.idx)}</tr>`).join('');
+                document.getElementById('dashExpensesTable').innerHTML = targetExpenses.map(e => `<tr><td><span style="font-size:12px;color:#6b7280;">${e['วันที่']}</span><br>${e['เวลา']}</td><td>${e['รายการ']}</td><td class="text-right">${e['ยอดรวม'].toLocaleString()}</td>${actionBtns('Expenses', e.idx)}</tr>`).join('');
+            } else {
+                document.getElementById('dashOrdersTable').innerHTML = targetOrders.map(o => `<tr><td>${o['เวลา']}</td><td>${o['รายการ']}</td><td class="text-right">${o['ยอดรวม'].toLocaleString()}</td>${actionBtns('Orders', o.idx)}</tr>`).join('');
+                document.getElementById('dashMarketTable').innerHTML = targetMarket.map(m => `<tr><td>${m['วันที่']}</td><td class="text-right">${m['ยอดรวม'].toLocaleString()}</td>${actionBtns('Market', m.idx)}</tr>`).join('');
+                document.getElementById('dashExpensesTable').innerHTML = targetExpenses.map(e => `<tr><td>${e['เวลา']}</td><td>${e['รายการ']}</td><td class="text-right">${e['ยอดรวม'].toLocaleString()}</td>${actionBtns('Expenses', e.idx)}</tr>`).join('');
+            }
         }
 
-        // 🗑️ ลบรายการออก จาก MySQL Database
-        async function deleteRecord(type, id) {
-            if (!confirm('ยืนยันที่จะลบรายการนี้ออกจากระบบออนไลน์?')) return;
+        async function editRecord(type, index) {
+            const record = db[type][index];
+            if (!record) return;
+
+            let newName = record['รายการ'];
+            if (type === 'Orders' || type === 'Expenses') {
+                newName = prompt(`แก้ไขชื่อรายการ:`, record['รายการ']);
+                if (newName === null) return;
+            }
+
+            let newValue = prompt(`แก้ไขยอดรวม (บาท):`, record['ยอดรวม']);
+            if (newValue === null || isNaN(newValue)) return;
+
             const branch = getBranchFromUrl();
+            const endpoint = type === 'Orders' ? 'orders' : (type === 'Market' ? 'market-expenses' : 'petty-expenses');
 
             try {
-                const res = await fetch(`/api/todlen/${branch}/pos-records/${type}/${id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    await updateDashboard();
-                    alert("ลบรายการออกจาก Database เรียบร้อย");
+                if (record.id) {
+                    await fetch(`/api/todlen/${branch}/${endpoint}/${record.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: newName, totalAmount: parseFloat(newValue) })
+                    });
                 }
+                await fetchPosDataFromDB();
+                updateDashboard();
             } catch (err) {
-                alert("ลบรายการไม่สำเร็จ");
+                console.error("แก้ไขข้อมูลไม่สำเร็จ:", err);
+            }
+        }
+
+        async function deleteRecord(type, index) {
+            const record = db[type][index];
+            if (!record) return;
+
+            if (confirm('ยืนยันที่จะลบรายการนี้ใช่หรือไม่?')) {
+                const branch = getBranchFromUrl();
+                const endpoint = type === 'Orders' ? 'orders' : (type === 'Market' ? 'market-expenses' : 'petty-expenses');
+
+                try {
+                    if (record.id) {
+                        await fetch(`/api/todlen/${branch}/${endpoint}/${record.id}`, { method: 'DELETE' });
+                    }
+                    await fetchPosDataFromDB();
+                    updateDashboard();
+                } catch (err) {
+                    console.error("ลบข้อมูลไม่สำเร็จ:", err);
+                }
             }
         }
 
@@ -894,21 +1006,23 @@
             <tr>
                 <td>${item['ชื่อเมนู']}</td>
                 <td class="text-right">${item['ราคา']}</td>
-                <td style="text-align: center;"><button class="delete-btn" onclick="deleteMenu(${item.id})">ลบ</button></td>
+                <td style="text-align: center;"><button class="delete-btn" onclick="deleteMenu(${index})">ลบ</button></td>
             </tr>
         `).join('');
         }
 
+        // ➕ เพิ่มเมนูใหม่ส่งตรงเข้า MySQL Database
         async function addNewMenu() {
             const name = document.getElementById('newMenuName').value.trim();
             const price = document.getElementById('newMenuPrice').value.trim();
             if (!name || !price) return alert("กรุณาใส่ชื่อและราคา");
 
+            const branch = getBranchFromUrl();
             try {
-                const res = await fetch('/api/menus', {
+                const res = await fetch(`/api/todlen/${branch}/menu-items`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, price: parseFloat(price), category: 'ทอดเล่น' })
+                    body: JSON.stringify({ name: name, price: parseFloat(price) })
                 });
 
                 if (res.ok) {
@@ -918,31 +1032,57 @@
                     renderMenuManage();
                     renderMenus();
                     alert("เพิ่มเมนูลง Database สำเร็จ!");
+                } else {
+                    alert("เกิดข้อผิดพลาดในการบันทึกเมนู");
                 }
             } catch (err) {
                 alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
             }
         }
 
-        async function deleteMenu(id) {
-            if (!id) return;
-            if (confirm(`ต้องการลบเมนูนี้ออกจากระบบใช่หรือไม่?`)) {
-                try {
-                    const res = await fetch(`/api/menus/${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        await fetchMenusFromDB();
-                        renderMenuManage();
-                        renderMenus();
-                        alert("ลบเมนูเรียบร้อยแล้ว");
+        // 🗑️ ลบเมนูออกจาก MySQL Database
+        async function deleteMenu(index) {
+            const item = db.Menu[index];
+            if (!item) return;
+
+            if (confirm(`ต้องการลบเมนู "${item['ชื่อเมนู']}" ใช่หรือไม่?`)) {
+                const branch = getBranchFromUrl();
+                if (item.id) {
+                    try {
+                        const res = await fetch(`/api/todlen/${branch}/menu-items/${item.id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            await fetchMenusFromDB();
+                            renderMenuManage();
+                            renderMenus();
+                            return;
+                        }
+                    } catch (err) {
+                        console.error("ลบเมนูไม่สำเร็จ:", err);
                     }
-                } catch (err) {
-                    alert("ลบเมนูไม่สำเร็จ");
                 }
             }
         }
 
         function importExcel() {
-            alert("สำหรับการทำงานระบบออนไลน์ แนะนำให้บันทึกออเดอร์ผ่านหน้าขายโดยตรงครับ");
+            const fileUpload = document.getElementById('excelUpload');
+            if (!fileUpload.files.length) return alert("กรุณาเลือกไฟล์ Excel ก่อน");
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                if (workbook.Sheets['Menu']) db.Menu = XLSX.utils.sheet_to_json(workbook.Sheets['Menu']);
+                if (workbook.Sheets['Orders']) db.Orders = XLSX.utils.sheet_to_json(workbook.Sheets['Orders']);
+                if (workbook.Sheets['Market']) db.Market = XLSX.utils.sheet_to_json(workbook.Sheets['Market']);
+                if (workbook.Sheets['Expenses']) db.Expenses = XLSX.utils.sheet_to_json(workbook.Sheets['Expenses']);
+
+                alert("นำเข้าข้อมูลจาก Excel สำเร็จ!");
+                renderMenus();
+                updateDashboard();
+                fileUpload.value = "";
+            };
+            reader.readAsArrayBuffer(fileUpload.files[0]);
         }
 
         async function exportExcel() {
@@ -952,7 +1092,7 @@
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Market), "Market");
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Expenses), "Expenses");
 
-            const defaultFileName = `ข้อมูลร้าน_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const defaultFileName = `ข้อมูลร้าน_${getTodayStr()}.xlsx`;
             XLSX.writeFile(wb, defaultFileName);
         }
     </script>
