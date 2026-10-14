@@ -412,6 +412,70 @@
             text-transform: uppercase;
         }
 
+        /* =========================================
+           สไตล์สำหรับแถบเมนูด้านบน ให้เข้ากับหน้า POS 
+           ========================================= */
+        .pos-topbar {
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
+        }
+
+        .pos-topbar-logo {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            letter-spacing: 0.5px;
+        }
+
+        .pos-topbar-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Prompt', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn-profit {
+            background-color: var(--success);
+            color: white;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .nav-btn-profit:hover {
+            background-color: var(--success-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .nav-btn-exit {
+            background-color: rgba(255, 255, 255, 0.15);
+            color: white;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn-exit:hover {
+            background-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
         .card .amount {
             font-size: 28px;
             font-weight: 600;
