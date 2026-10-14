@@ -36,6 +36,9 @@
             <span id="navBranchTitle">📊 ระบบส่วนแบ่งกำไร</span>
         </div>
         <div class="flex gap-2">
+            <button id="adminLogButton" onclick="window.location.href='/todlen/admin/logs'" class="hidden bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-medium transition text-xs flex items-center gap-1">
+                <i class="fa-solid fa-clipboard-list"></i> ประวัติ Log
+            </button>
             <button onclick="switchToPOS()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition text-xs flex items-center gap-1">
                 🛒 สลับไปหน้า POS หน้าร้าน
             </button>
@@ -169,6 +172,7 @@
     <script>
         const user = JSON.parse(sessionStorage.getItem('user') || '{}');
         const currentBranch = window.location.pathname.split('/')[2] || 'korat';
+        if (user.role === 'admin') document.getElementById('adminLogButton')?.classList.remove('hidden');
 
         (function checkBranchAccess() {
             if (!user.role) { alert('กรุณาเข้าสู่ระบบก่อนใช้งาน'); window.location.href = '/todlen/login'; return; }
@@ -500,9 +504,11 @@
         }
 
         function switchToPOS() { window.location.href = `/todlen/${currentBranch}/pos`; }
-        function goToAdminOrLogout() {
-            if (user.role === 'admin') window.location.href = '/todlen/select-branch';
-            else { sessionStorage.clear(); window.location.href = '/todlen/login'; }
+        async function goToAdminOrLogout() {
+            if (user.role === 'admin') { window.location.href = '/todlen/select-branch'; return; }
+            try { await fetch('/api/todlen/logout', { method: 'POST', credentials: 'same-origin' }); } catch (err) {}
+            sessionStorage.clear();
+            window.location.href = '/todlen/login';
         }
     </script>
 </body>

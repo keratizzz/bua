@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Log - ทอดเล่น</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>body{font-family:'Prompt',sans-serif;background:#f1f5f9}.soft-shadow{box-shadow:0 4px 16px rgba(15,23,42,.06)}.mono{font-variant-numeric:tabular-nums}</style>
+</head>
+<body class="min-h-screen text-slate-800">
+  <header class="bg-slate-900 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-violet-600 flex items-center justify-center"><i class="fa-solid fa-clipboard-list text-xl"></i></div>
+        <div><h1 class="text-xl font-bold">ประวัติกิจกรรมระบบ (Activity Log)</h1><p class="text-sm text-slate-300">แสดงประวัติย้อนหลัง 90 วัน · สำหรับ Admin เท่านั้น</p></div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="window.location.href='/todlen/select-branch'" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-4 py-2 text-sm"><i class="fa-solid fa-arrow-left mr-1"></i> กลับหน้าหลัก</button>
+        <button onclick="logout()" class="rounded-lg bg-rose-600 hover:bg-rose-500 px-4 py-2 text-sm"><i class="fa-solid fa-right-from-bracket mr-1"></i> ออกจากระบบ</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-5">
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="bg-white rounded-2xl p-4 soft-shadow"><p class="text-sm text-slate-500">รายการที่ตรงกับตัวกรอง</p><p class="text-2xl font-bold mt-1" id="totalCount">—</p></div>
+      <div class="bg-white rounded-2xl p-4 soft-shadow"><p class="text-sm text-slate-500">ช่วงข้อมูล</p><p class="text-lg font-semibold mt-1">ย้อนหลัง 90 วัน</p></div>
+      <div class="bg-white rounded-2xl p-4 soft-shadow"><p class="text-sm text-slate-500">สถานะ</p><p class="text-lg font-semibold mt-1" id="statusText">กำลังโหลด...</p></div>
+    </section>
+
+    <section class="bg-white rounded-2xl p-4 sm:p-5 soft-shadow">
+      <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="lg:col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">ค้นหาคำ / ผู้ใช้งาน / รายละเอียด</label><input id="q" type="search" placeholder="เช่น admin, ลบ, กำไร, menu..." class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:ring-2 focus:ring-violet-500"></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">สาขา</label><select id="branch" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 bg-white"><option value="">ทุกสาขา</option><option value="korat">โคราช</option><option value="buriram">บุรีรัมย์</option></select></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">ผลการทำรายการ</label><select id="status" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 bg-white"><option value="">ทั้งหมด</option><option value="success">สำเร็จ</option><option value="failed">ไม่สำเร็จ</option></select></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">ตั้งแต่วันที่</label><input id="from" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2.5"></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">ถึงวันที่</label><input id="to" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2.5"></div>
+        <div class="sm:col-span-2 lg:col-span-6 flex flex-wrap gap-2 pt-1">
+          <button id="searchBtn" class="rounded-lg bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 font-medium" type="submit"><i class="fa-solid fa-magnifying-glass mr-1"></i> ค้นหา</button>
+          <button class="rounded-lg border border-slate-300 hover:bg-slate-50 px-4 py-2.5" type="button" onclick="resetFilters()"><i class="fa-solid fa-rotate-left mr-1"></i> ล้างตัวกรอง</button>
+          <span class="text-xs text-slate-500 self-center">ค้นหาเฉพาะประวัติภายใน 90 วันล่าสุด</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-white rounded-2xl soft-shadow overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 sm:px-5 py-4 border-b border-slate-100">
+        <div><h2 class="font-bold text-lg">รายการกิจกรรม</h2><p class="text-xs text-slate-500">กิจกรรมเขียน/แก้ไข/ลบข้อมูลและความพยายามเข้าสู่ระบบ</p></div>
+        <div class="text-sm text-slate-500" id="pageInfo">—</div>
+      </div>
+      <div id="errorBox" class="hidden m-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-4 text-sm"></div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left min-w-[920px]">
+          <thead class="bg-slate-50 text-slate-500 text-xs uppercase"><tr>
+            <th class="px-4 py-3 font-semibold">วัน / เวลา</th><th class="px-4 py-3 font-semibold">ผู้ใช้งาน</th><th class="px-4 py-3 font-semibold">กิจกรรม</th><th class="px-4 py-3 font-semibold">สาขา</th><th class="px-4 py-3 font-semibold">ผลลัพธ์</th><th class="px-4 py-3 font-semibold">รายละเอียดเพิ่มเติม</th>
+          </tr></thead>
+          <tbody id="logRows" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-12 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดประวัติ...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-t border-slate-100">
+        <p class="text-xs text-slate-500" id="pageSummary">—</p>
+        <div class="flex gap-2"><button id="prevBtn" onclick="changePage(-1)" class="rounded-lg border px-3 py-2 text-sm disabled:opacity-40" disabled><i class="fa-solid fa-chevron-left mr-1"></i>ก่อนหน้า</button><button id="nextBtn" onclick="changePage(1)" class="rounded-lg border px-3 py-2 text-sm disabled:opacity-40" disabled>ถัดไป<i class="fa-solid fa-chevron-right ml-1"></i></button></div>
+      </div>
+    </section>
+    <p class="text-xs text-slate-400 text-center">หมายเหตุ: ระบบลบ Log ที่เก่ากว่า 90 วันโดยอัตโนมัติ รายละเอียดที่บันทึกจะไม่รวมรหัสผ่าน</p>
+  </main>
+
+<script>
+  let page = 1;
+  const pageSize = 50;
+  let totalPages = 1;
+  const $ = id => document.getElementById(id);
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const branchLabel = value => value === 'korat' ? 'โคราช' : value === 'buriram' ? 'บุรีรัมย์' : value || 'ไม่ระบุ';
+  function formatDate(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return escapeHtml(value);
+    return d.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'medium' });
+  }
+  function detailSummary(metadata) {
+    if (!metadata) return '<span class="text-slate-400">—</span>';
+    let obj = metadata;
+    if (typeof metadata === 'string') { try { obj = JSON.parse(metadata); } catch (_) { return escapeHtml(metadata); } }
+    const ignore = new Set(['method','path']);
+    const entries = Object.entries(obj || {}).filter(([k]) => !ignore.has(k)).slice(0, 6);
+    if (!entries.length) return '<span class="text-slate-400">—</span>';
+    return entries.map(([k,v]) => `<span class="inline-block mr-2 mb-1 rounded bg-slate-100 px-2 py-1 text-xs"><b>${escapeHtml(k)}:</b> ${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : v)}</span>`).join('');
+  }
+  function showError(message) { $('errorBox').textContent = message; $('errorBox').classList.remove('hidden'); }
+  function hideError() { $('errorBox').classList.add('hidden'); $('errorBox').textContent = ''; }
+  async function loadLogs() {
+    hideError();
+    $('statusText').textContent = 'กำลังโหลด...';
+    $('searchBtn').disabled = true;
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    for (const key of ['q','branch','status','from','to']) { const value = $(key).value.trim(); if (value) params.set(key, value); }
+    $('logRows').innerHTML = '<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังค้นหา...</td></tr>';
+    try {
+      const response = await fetch(`/api/todlen/audit-logs?${params.toString()}`, { credentials: 'same-origin' });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) { showError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'); $('statusText').textContent = 'ยังไม่ได้เข้าสู่ระบบ'; $('logRows').innerHTML = '<tr><td colspan="6" class="px-4 py-10 text-center"><a class="text-violet-700 underline" href="/todlen/login">ไปหน้าเข้าสู่ระบบ</a></td></tr>'; return; }
+      if (response.status === 403) { showError('บัญชีนี้ไม่มีสิทธิ์ดูประวัติ Log'); $('statusText').textContent = 'ไม่มีสิทธิ์'; $('logRows').innerHTML = '<tr><td colspan="6" class="px-4 py-10 text-center text-slate-400">ไม่มีข้อมูลให้แสดง</td></tr>'; return; }
+      if (!response.ok || !data.success) throw new Error(data.message || 'ไม่สามารถโหลดประวัติได้');
+      const logs = data.logs || [];
+      const pg = data.pagination || {};
+      totalPages = pg.totalPages || 1;
+      $('totalCount').textContent = Number(pg.total || 0).toLocaleString('th-TH');
+      $('statusText').textContent = 'โหลดข้อมูลแล้ว';
+      $('pageInfo').textContent = `หน้า ${pg.page || 1} / ${totalPages}`;
+      $('pageSummary').textContent = logs.length ? `แสดง ${((page - 1) * pageSize) + 1}–${((page - 1) * pageSize) + logs.length} จาก ${Number(pg.total || 0).toLocaleString('th-TH')} รายการ` : 'ไม่พบรายการที่ตรงกับเงื่อนไข';
+      $('prevBtn').disabled = page <= 1;
+      $('nextBtn').disabled = page >= totalPages;
+      if (!logs.length) {
+        $('logRows').innerHTML = '<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400"><i class="fa-regular fa-folder-open text-2xl block mb-2"></i>ไม่พบประวัติกิจกรรม</td></tr>';
+        return;
+      }
+      $('logRows').innerHTML = logs.map(log => {
+        const actor = log.actor_name || log.actor_username || 'ไม่ระบุผู้ใช้';
+        const role = log.actor_role ? `<span class="ml-1 rounded bg-slate-100 text-slate-500 px-1.5 py-0.5 text-[10px]">${escapeHtml(log.actor_role)}</span>` : '';
+        const status = Number(log.is_success) === 1 ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 text-xs"><i class="fa-solid fa-check"></i>สำเร็จ</span>' : '<span class="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-700 px-2 py-1 text-xs"><i class="fa-solid fa-xmark"></i>ไม่สำเร็จ</span>';
+        const target = log.target_type ? `<div class="text-xs text-slate-500 mt-1">${escapeHtml(log.target_type)}${log.target_id ? ' #' + escapeHtml(log.target_id) : ''}</div>` : '';
+        return `<tr class="hover:bg-slate-50 align-top"><td class="px-4 py-3 whitespace-nowrap text-slate-600 mono">${escapeHtml(formatDate(log.created_at))}</td><td class="px-4 py-3"><div class="font-semibold text-slate-800">${escapeHtml(actor)}${role}</div><div class="text-xs text-slate-500">${escapeHtml(log.actor_username || '')}</div></td><td class="px-4 py-3"><div class="font-medium text-slate-800">${escapeHtml(log.description || log.action_key)}</div><div class="text-xs text-slate-400 mt-1">${escapeHtml(log.action_key || '')}</div>${target}</td><td class="px-4 py-3">${escapeHtml(branchLabel(log.branch))}</td><td class="px-4 py-3">${status}<div class="text-[11px] text-slate-400 mt-1">HTTP ${escapeHtml(log.status_code ?? '—')}</div></td><td class="px-4 py-3 max-w-sm">${detailSummary(log.metadata)}<div class="text-[10px] text-slate-400 mt-1">${escapeHtml(log.ip_address || '')}</div></td></tr>`;
+      }).join('');
+    } catch (err) {
+      showError(`${err.message || 'เกิดข้อผิดพลาด'} — โปรดตรวจสอบว่ารัน audit_logs.sql แล้ว`);
+      $('statusText').textContent = 'เกิดข้อผิดพลาด';
+      $('logRows').innerHTML = '<tr><td colspan="6" class="px-4 py-10 text-center text-rose-600">โหลดประวัติไม่สำเร็จ</td></tr>';
+    } finally { $('searchBtn').disabled = false; }
+  }
+  $('filterForm').addEventListener('submit', e => { e.preventDefault(); page = 1; loadLogs(); });
+  function changePage(delta) { page = Math.max(1, Math.min(totalPages, page + delta)); loadLogs(); }
+  function resetFilters() { ['q','branch','status','from','to'].forEach(key => $(key).value = ''); page = 1; loadLogs(); }
+  async function logout() {
+    try { await fetch('/api/todlen/logout', { method: 'POST', credentials: 'same-origin' }); } catch (_) {}
+    sessionStorage.clear();
+    window.location.href = '/todlen/login';
+  }
+  loadLogs();
+</script>
+</body>
+</html>

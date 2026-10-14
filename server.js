@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 const http = require('http');
 const { Server } = require('socket.io');
 
@@ -29,6 +30,226 @@ const db = mysql.createPool({
 
 const promiseDb = db.promise();
 
+// ==========================================
+// 🔐 SIGNED SESSION + AUDIT LOGGING
+// ==========================================
+// ตั้งค่า SESSION_SECRET ใน Environment Variables ของโฮสต์ให้เป็นค่าสุ่มยาวอย่างน้อย 32 ตัวอักษร
+// ถ้าไม่ได้ตั้งค่า จะใช้ secret ชั่วคราวและผู้ใช้ต้อง login ใหม่เมื่อเซิร์ฟเวอร์ restart
+const SESSION_COOKIE = 'todlen_session';
+const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.LOG_SESSION_SECRET || crypto.randomBytes(48).toString('hex');
+if (!process.env.SESSION_SECRET && !process.env.LOG_SESSION_SECRET) {
+    console.warn('[security] Please configure SESSION_SECRET in environment variables for persistent signed sessions.');
+}
+
+function parseCookies(header = '') {
+    const out = {};
+    header.split(';').forEach(part => {
+        const i = part.indexOf('=');
+        if (i < 0) return;
+        const key = part.slice(0, i).trim();
+        const value = part.slice(i + 1).trim();
+        try { out[key] = decodeURIComponent(value); } catch (_) { out[key] = value; }
+    });
+    return out;
+}
+
+function signSessionPayload(payload) {
+    return crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+}
+
+function readSession(req) {
+    const token = parseCookies(req.headers.cookie || '')[SESSION_COOKIE];
+    if (!token || !token.includes('.')) return null;
+    const dot = token.lastIndexOf('.');
+    const payload = token.slice(0, dot);
+    const signature = token.slice(dot + 1);
+    const expected = signSessionPayload(payload);
+    const a = Buffer.from(signature);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    try {
+        const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        if (!data.exp || data.exp < Math.floor(Date.now() / 1000) || !data.id) return null;
+        return { id: Number(data.id), username: data.username, name: data.name, role: data.role, branch: data.branch };
+    } catch (_) { return null; }
+}
+
+function setSessionCookie(res, user) {
+    const payload = Buffer.from(JSON.stringify({
+        id: Number(user.id), username: user.username, name: user.name,
+        role: user.role, branch: user.branch,
+        exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS
+    })).toString('base64url');
+    const token = `${payload}.${signSessionPayload(payload)}`;
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure}`);
+}
+
+function clearSessionCookie(res) {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`);
+}
+
+app.use((req, res, next) => {
+    req.auditUser = readSession(req);
+    next();
+});
+
+async function writeAuditLog(req, entry, actorOverride = null) {
+    const actor = actorOverride || req.auditUser || null;
+    const metadata = entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : null;
+    const branch = entry.branch || (req.path.match(/^\/api\/todlen\/(korat|buriram)(?:\/|$)/) || [])[1] || (actor && actor.branch !== 'all' ? actor.branch : null) || null;
+    const target = entry.target || inferAuditTarget(req.path);
+    await promiseDb.query(
+        `INSERT INTO audit_logs
+         (actor_user_id, actor_username, actor_name, actor_role, action_key, description, branch,
+          target_type, target_id, status_code, is_success, metadata, ip_address, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            actor && Number.isFinite(Number(actor.id)) ? Number(actor.id) : null,
+            actor && actor.username ? String(actor.username).slice(0, 50) : null,
+            actor && actor.name ? String(actor.name).slice(0, 100) : null,
+            actor && actor.role ? String(actor.role).slice(0, 20) : null,
+            String(entry.actionKey || 'system.activity').slice(0, 120),
+            String(entry.description || 'กิจกรรมในระบบ').slice(0, 500),
+            branch ? String(branch).slice(0, 40) : null,
+            target.type ? String(target.type).slice(0, 80) : null,
+            target.id !== null && target.id !== undefined ? String(target.id).slice(0, 100) : null,
+            entry.statusCode === undefined ? null : Number(entry.statusCode),
+            entry.isSuccess === undefined ? 1 : (entry.isSuccess ? 1 : 0),
+            metadata ? JSON.stringify(metadata) : null,
+            String(req.ip || req.socket?.remoteAddress || '').slice(0, 45) || null,
+            String(req.get('user-agent') || '').slice(0, 255) || null
+        ]
+    );
+}
+
+function inferAuditTarget(pathname) {
+    const patterns = [
+        [/\/daily-profit-records\/([^/]+)/, 'daily_profit_record'],
+        [/\/users\/([^/]+)/, 'user'],
+        [/\/partners\/([^/]+)/, 'partner'],
+        [/\/menus\/([^/]+)/, 'menu'],
+        [/\/history\/bill\/([^/]+)/, 'bill'],
+        [/\/orders\/(?:item|serve|reject)\/([^/]+)/, 'order'],
+        [/\/confirm-table\/([^/]+)/, 'table'],
+        [/\/serve-table\/([^/]+)/, 'table']
+    ];
+    for (const [regex, type] of patterns) {
+        const match = pathname.match(regex);
+        if (match) return { type, id: match[1] };
+    }
+    if (pathname.includes('save-daily-profit')) return { type: 'daily_profit_record', id: null };
+    if (pathname.includes('/todlen/users')) return { type: 'user', id: null };
+    if (pathname.includes('/partners')) return { type: 'partner', id: null };
+    if (pathname.includes('/menus')) return { type: 'menu', id: null };
+    if (pathname.includes('/orders')) return { type: 'order', id: null };
+    return { type: null, id: null };
+}
+
+function describeAuditMutation(req) {
+    const p = req.path;
+    const m = req.method;
+    const branch = (p.match(/^\/api\/todlen\/(korat|buriram)(?:\/|$)/) || [])[1];
+    const branchLabel = branch === 'korat' ? 'สาขาโคราช' : branch === 'buriram' ? 'สาขาบุรีรัมย์' : '';
+    if (p.includes('/save-daily-profit')) return ['profit.save', `บันทึก/แก้ไขส่วนแบ่งกำไรประจำวัน ${branchLabel}`.trim()];
+    if (p.includes('/daily-profit-records/') && m === 'DELETE') return ['profit.delete', `ลบประวัติส่วนแบ่งกำไร ${branchLabel}`.trim()];
+    if (p === '/api/todlen/users' && m === 'POST') return ['user.create', 'เพิ่มผู้ใช้งาน'];
+    if (p.startsWith('/api/todlen/users/') && m === 'PUT') return ['user.update', 'แก้ไขข้อมูลผู้ใช้งาน'];
+    if (p.startsWith('/api/todlen/users/') && m === 'DELETE') return ['user.delete', 'ลบผู้ใช้งาน'];
+    if (p.includes('/partners') && m === 'POST') return ['partner.create', `เพิ่มหุ้นส่วน ${branchLabel}`.trim()];
+    if (p.includes('/partners/') && m === 'PUT') return ['partner.update', `แก้ไขข้อมูลหุ้นส่วน ${branchLabel}`.trim()];
+    if (p.includes('/partners/') && m === 'DELETE') return ['partner.delete', `ลบหุ้นส่วน ${branchLabel}`.trim()];
+    if (p.includes('/config') && m === 'POST') return ['settings.update', `เปลี่ยนการตั้งค่าระบบ ${branchLabel}`.trim()];
+    if (p === '/api/orders/batch') return ['order.create', 'รับออเดอร์ใหม่'];
+    if (p.includes('/orders/confirm-table/')) return ['order.confirm_table', 'ยืนยันออเดอร์ทั้งโต๊ะ'];
+    if (p.includes('/orders/reject/')) return ['order.cancel', 'ยกเลิกออเดอร์'];
+    if (p.includes('/orders/item/') && m === 'DELETE') return ['order.delete_item', 'ลบรายการอาหารจากออเดอร์'];
+    if (p.includes('/orders/serve-table/')) return ['order.serve_table', 'เปลี่ยนสถานะอาหารทั้งโต๊ะเป็นเสิร์ฟแล้ว'];
+    if (p.includes('/orders/serve/')) return ['order.serve', 'เปลี่ยนสถานะรายการอาหารเป็นเสิร์ฟแล้ว'];
+    if (p.includes('/orders/history/bill/') && m === 'PUT') return ['bill.update', 'แก้ไขบิลย้อนหลัง'];
+    if (p.includes('/orders/history/bill/') && m === 'DELETE') return ['bill.delete', 'ลบบิลย้อนหลัง'];
+    if (p === '/api/category-order') return ['menu.category_order', 'เปลี่ยนลำดับหมวดหมู่เมนู'];
+    if (p === '/api/menus' && m === 'POST') return ['menu.create', 'เพิ่มเมนูอาหาร'];
+    if (p.startsWith('/api/menus/') && m === 'PUT') return ['menu.update', 'แก้ไขเมนูอาหาร'];
+    if (p.startsWith('/api/menus/') && m === 'DELETE') return ['menu.delete', 'ลบเมนูอาหาร'];
+    if (p === '/api/auth/login') return ['legacy.login', 'พยายามเข้าสู่ระบบแจ่วฮ้อนด้วยรหัสผ่านกลาง'];
+    const methodLabels = { POST: 'เพิ่ม/บันทึก', PUT: 'แก้ไข', PATCH: 'แก้ไข', DELETE: 'ลบ' };
+    return [`api.${m.toLowerCase()}`, `${methodLabels[m] || m} ข้อมูลผ่าน ${p}`.slice(0, 500)];
+}
+
+function safeAuditMetadata(body = {}) {
+    const allowed = [
+        'recordDate', 'posNetProfit', 'finalProfit', 'shopFund', 'name', 'username', 'role', 'branch',
+        'share_percent', 'shopFundPercent', 'expense_date', 'total_amount', 'title', 'table_number',
+        'menu_name', 'payment_method', 'customer_name', 'order_date', 'order_time', 'date', 'setting_key',
+        'category', 'price', 'qty', 'bill_id'
+    ];
+    const safe = {};
+    for (const key of allowed) {
+        const value = body[key];
+        if (value === undefined || value === null) continue;
+        if (typeof value === 'string') safe[key] = value.slice(0, 200);
+        else if (typeof value === 'number' || typeof value === 'boolean') safe[key] = value;
+    }
+    if (Array.isArray(body.items)) safe.itemsCount = body.items.length;
+    if (Array.isArray(body.order_items)) safe.orderItemsCount = body.order_items.length;
+    if (Array.isArray(body.payouts)) safe.payoutsCount = body.payouts.length;
+    return safe;
+}
+
+// Log every state-changing API call. Passwords and secret fields are deliberately never captured.
+app.use((req, res, next) => {
+    const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+    if (!mutating || !req.path.startsWith('/api/') || ['/api/todlen/login', '/api/todlen/logout'].includes(req.path)) return next();
+    const [actionKey, description] = describeAuditMutation(req);
+    const metadata = safeAuditMetadata(req.body || {});
+    metadata.method = req.method;
+    metadata.path = req.path;
+    const target = inferAuditTarget(req.path);
+    res.on('finish', () => {
+        writeAuditLog(req, {
+            actionKey, description, metadata, target,
+            statusCode: res.statusCode,
+            isSuccess: res.statusCode < 400
+        }).catch(err => console.error('[audit] Failed to write activity log:', err.message));
+    });
+    next();
+});
+
+async function requireAdmin(req, res, next) {
+    try {
+        if (!req.auditUser || !req.auditUser.id) return res.status(401).json({ success: false, message: 'กรุณาเข้าสู่ระบบใหม่' });
+        const [rows] = await promiseDb.query('SELECT id, username, name, role, branch FROM todlen_users WHERE id = ? LIMIT 1', [req.auditUser.id]);
+        if (!rows.length || rows[0].role !== 'admin') return res.status(403).json({ success: false, message: 'เฉพาะ Admin เท่านั้นที่ดูประวัตินี้ได้' });
+        req.auditUser = rows[0];
+        next();
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'ตรวจสอบสิทธิ์ไม่สำเร็จ' });
+    }
+}
+
+async function requireAdminPage(req, res, next) {
+    try {
+        if (!req.auditUser || !req.auditUser.id) return res.redirect('/todlen/login');
+        const [rows] = await promiseDb.query('SELECT id, username, name, role, branch FROM todlen_users WHERE id = ? LIMIT 1', [req.auditUser.id]);
+        if (!rows.length || rows[0].role !== 'admin') return res.status(403).send('หน้านี้สำหรับ Admin เท่านั้น');
+        req.auditUser = rows[0];
+        next();
+    } catch (_) { res.status(500).send('ตรวจสอบสิทธิ์ไม่สำเร็จ'); }
+}
+
+async function cleanupOldAuditLogs() {
+    try {
+        await promiseDb.query('DELETE FROM audit_logs WHERE created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 90 DAY)');
+    } catch (err) {
+        if (err.code !== 'ER_NO_SUCH_TABLE') console.error('[audit] Retention cleanup failed:', err.message);
+    }
+}
+setTimeout(cleanupOldAuditLogs, 10000).unref();
+setInterval(cleanupOldAuditLogs, 24 * 60 * 60 * 1000).unref();
+
 function getBranchTable(branch, tableType) {
     const validBranches = ['korat', 'buriram'];
     if (!validBranches.includes(branch)) throw new Error('สาขาไม่ถูกต้อง');
@@ -47,6 +268,7 @@ app.get('/history', (req, res) => res.sendFile(path.join(__dirname, 'public', 'h
 // --- ระบบใหม่ (ทอดเล่น) ---
 app.get('/todlen/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todlen-login.html')));
 app.get('/todlen/select-branch', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todlen-select.html')));
+app.get('/todlen/admin/logs', requireAdminPage, (req, res) => res.sendFile(path.join(__dirname, 'public', 'todlen-logs.html')));
 app.get('/todlen/:branch/pos', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todlen-pos.html')));
 app.get('/todlen/:branch/profit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todlen-profit.html')));
 
@@ -62,14 +284,85 @@ app.post('/api/todlen/login', async (req, res) => {
         const [rows] = await promiseDb.query('SELECT * FROM todlen_users WHERE username = ?', [username]);
 
         if (rows.length === 0 || rows[0].password_hash !== password) {
+            try {
+                await writeAuditLog(req, {
+                    actionKey: 'auth.login.failed', description: 'เข้าสู่ระบบทอดเล่นไม่สำเร็จ',
+                    isSuccess: false, statusCode: 401,
+                    metadata: { attemptedUsername: String(username || '').slice(0, 50) }
+                }, { id: null, username: String(username || '').slice(0, 50), name: null, role: null, branch: null });
+            } catch (logErr) { console.error('[audit] Failed to log login failure:', logErr.message); }
             return res.status(401).json({ success: false, message: 'Username หรือ Password ไม่ถูกต้อง' });
         }
 
         const user = rows[0];
+        setSessionCookie(res, user);
+        try {
+            await writeAuditLog(req, {
+                actionKey: 'auth.login.success', description: 'เข้าสู่ระบบทอดเล่นสำเร็จ',
+                isSuccess: true, statusCode: 200,
+                metadata: { username: user.username, role: user.role, branch: user.branch }
+            }, user);
+        } catch (logErr) { console.error('[audit] Failed to log login success:', logErr.message); }
         let redirectTo = user.role === 'admin' ? '/todlen/select-branch' : `/todlen/${user.branch}/profit`;
         res.json({ success: true, user: { name: user.name, role: user.role, branch: user.branch }, redirectTo });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/todlen/logout', async (req, res) => {
+    try {
+        if (req.auditUser) {
+            try {
+                await writeAuditLog(req, { actionKey: 'auth.logout', description: 'ออกจากระบบทอดเล่น', isSuccess: true, statusCode: 200 });
+            } catch (logErr) { console.error('[audit] Failed to log logout:', logErr.message); }
+        }
+        clearSessionCookie(res);
+        res.json({ success: true, message: 'ออกจากระบบแล้ว' });
+    } catch (err) {
+        clearSessionCookie(res);
+        res.status(500).json({ success: false, message: 'ออกจากระบบแล้ว แต่บันทึกเหตุการณ์ไม่สำเร็จ' });
+    }
+});
+
+app.get('/api/todlen/audit-logs', requireAdmin, async (req, res) => {
+    try {
+        await cleanupOldAuditLogs();
+        const page = Math.max(1, Math.min(100000, parseInt(req.query.page, 10) || 1));
+        const pageSize = Math.max(10, Math.min(100, parseInt(req.query.pageSize, 10) || 50));
+        const offset = (page - 1) * pageSize;
+        const conditions = ['created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 90 DAY)'];
+        const params = [];
+        const q = String(req.query.q || '').trim().slice(0, 200);
+        const branch = String(req.query.branch || '').trim();
+        const status = String(req.query.status || '').trim();
+        const action = String(req.query.action || '').trim().slice(0, 120);
+        const from = String(req.query.from || '').trim();
+        const to = String(req.query.to || '').trim();
+        if (q) {
+            const like = `%${q}%`;
+            conditions.push('(actor_username LIKE ? OR actor_name LIKE ? OR description LIKE ? OR action_key LIKE ? OR branch LIKE ? OR target_id LIKE ? OR CAST(metadata AS CHAR) LIKE ?)');
+            params.push(like, like, like, like, like, like, like);
+        }
+        if (['korat', 'buriram'].includes(branch)) { conditions.push('branch = ?'); params.push(branch); }
+        if (status === 'success') conditions.push('is_success = 1');
+        if (status === 'failed') conditions.push('is_success = 0');
+        if (action) { conditions.push('action_key = ?'); params.push(action); }
+        const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value);
+        if (validDate(from)) { conditions.push('created_at >= ?'); params.push(`${from} 00:00:00`); }
+        if (validDate(to)) { conditions.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(`${to} 00:00:00`); }
+        const where = conditions.join(' AND ');
+        const [[countRow]] = await promiseDb.query(`SELECT COUNT(*) AS total FROM audit_logs WHERE ${where}`, params);
+        const [logs] = await promiseDb.query(
+            `SELECT id, actor_user_id, actor_username, actor_name, actor_role, action_key, description,
+                    branch, target_type, target_id, status_code, is_success, metadata, ip_address, user_agent, created_at
+             FROM audit_logs WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
+            [...params, pageSize, offset]
+        );
+        res.json({ success: true, logs, pagination: { page, pageSize, total: Number(countRow.total), totalPages: Math.max(1, Math.ceil(Number(countRow.total) / pageSize)) } });
+    } catch (err) {
+        console.error('[audit] Failed to query logs:', err.message);
+        res.status(500).json({ success: false, message: 'โหลดประวัติไม่สำเร็จ กรุณาตรวจสอบว่ารันไฟล์ SQL สำหรับสร้างตาราง Log แล้ว' });
     }
 });
 
@@ -331,8 +624,29 @@ io.on('connection', (socket) => {
     socket.on('checkout_table', ({ tableNum, paymentMethod }) => {
         const billId = 'BILL-' + Date.now();
         const sql = "UPDATE orders SET status = 'paid', payment_method = ?, bill_id = ?, checkout_time = NOW() WHERE table_number = ? AND status IN ('confirmed', 'served')";
+        const handshakeHeaders = socket.handshake.headers || {};
+        const socketAuditReq = {
+            headers: handshakeHeaders,
+            path: '/socket.io/checkout_table',
+            ip: socket.handshake.address || '',
+            socket: { remoteAddress: socket.handshake.address || '' },
+            auditUser: readSession({ headers: handshakeHeaders }),
+            get: (name) => handshakeHeaders[String(name).toLowerCase()] || ''
+        };
         db.query(sql, [paymentMethod, billId, tableNum], (err, result) => {
-            if (err) return;
+            if (err) {
+                writeAuditLog(socketAuditReq, {
+                    actionKey: 'legacy.checkout.failed', description: 'ปิดบิล/รับชำระเงินไม่สำเร็จ',
+                    target: { type: 'table', id: tableNum }, statusCode: 500, isSuccess: false,
+                    metadata: { tableNum, paymentMethod }
+                }).catch(logErr => console.error('[audit] Failed to log checkout failure:', logErr.message));
+                return;
+            }
+            writeAuditLog(socketAuditReq, {
+                actionKey: 'legacy.checkout', description: 'ปิดบิลและรับชำระเงิน',
+                target: { type: 'table', id: tableNum }, statusCode: 200, isSuccess: true,
+                metadata: { tableNum, paymentMethod, billId, affectedRows: result.affectedRows }
+            }).catch(logErr => console.error('[audit] Failed to log checkout:', logErr.message));
             io.emit('clear_table_ui', tableNum);
             notifyActiveTables();
         });
