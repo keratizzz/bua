@@ -220,11 +220,11 @@
                 if (data.success && data.partners.length > 0) {
                     const colors = ['#3b82f6', '#ef4444', '#10b981', '#a855f7', '#f59e0b', '#06b6d4'];
                     partners = data.partners.map((p, idx) => ({
-    id: `p_${p.id}`,
-    name: p.name,  // <--- แก้ตรงนี้
-    percent: parseFloat(p.share_percent), // <--- แก้ตรงนี้
-    color: colors[idx % colors.length]
-}));
+                        id: `p_${p.id}`,
+                        name: p.name,
+                        percent: parseFloat(p.share_percent),
+                        color: colors[idx % colors.length]
+                    }));
                 }
             } catch (err) {}
 
@@ -260,30 +260,42 @@
             `).join('');
         }
 
+        // 🔄 ดึงยอดกำไรสุทธิจาก MySQL Database ผ่าน API
         async function autoFetchPosProfit() {
             const date = document.getElementById('inputDate').value;
             if (!date) return;
             
             try {
-                // ดึงข้อมูลจาก LocalStorage ที่หน้า POS บันทึกไว้
+                // 1. ลองดึงตรงจาก API เซิร์ฟเวอร์
+                const res = await fetch(`/api/todlen/${currentBranch}/pos-net-profit?date=${date}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('inputProfit').value = data.netProfit;
+                        document.getElementById('posCalcDetails').innerText = `ยอดขาย: ฿${data.totalSales.toLocaleString()} | รายจ่ายตลาด: ฿${data.totalMarket.toLocaleString()} | รายจ่ายย่อย: ฿${data.totalPetty.toLocaleString()}`;
+                        return;
+                    }
+                }
+            } catch (apiErr) {
+                console.warn("ดึงยอด POS จาก API ไม่สำเร็จ สลับไปดึงจาก LocalStorage:", apiErr);
+            }
+
+            // 2. ระบบสำรอง: ดึงจาก LocalStorage ในเครื่อง
+            try {
                 const saved = localStorage.getItem('myPOS_DB');
                 if (saved) {
                     const db = JSON.parse(saved);
-                    
-                    // กรองข้อมูลเฉพาะวันที่เลือก
                     const targetOrders = db.Orders ? db.Orders.filter(o => o['วันที่'] === date) : [];
                     const targetMarket = db.Market ? db.Market.filter(m => m['วันที่'] === date) : [];
                     const targetExpenses = db.Expenses ? db.Expenses.filter(e => e['วันที่'] === date) : [];
                     
-                    // คำนวณยอด
                     const totalSales = targetOrders.reduce((sum, o) => sum + (o['ยอดรวม'] || 0), 0);
                     const totalMarket = targetMarket.reduce((sum, m) => sum + (m['ยอดรวม'] || 0), 0);
                     const totalPetty = targetExpenses.reduce((sum, e) => sum + (e['ยอดรวม'] || 0), 0);
                     const netProfit = totalSales - totalMarket - totalPetty;
                     
-                    // แสดงผล
                     document.getElementById('inputProfit').value = netProfit;
-                    document.getElementById('posCalcDetails').innerText = `ยอดขาย: ฿${totalSales.toLocaleString()} | รายจ่ายตลาด: ฿${totalMarket.toLocaleString()} | รายจ่ายย่อย: ฿${totalPetty.toLocaleString()}`;
+                    document.getElementById('posCalcDetails').innerText = `(สำรองในเครื่อง) ยอดขาย: ฿${totalSales.toLocaleString()} | รายจ่ายตลาด: ฿${totalMarket.toLocaleString()} | รายจ่ายย่อย: ฿${totalPetty.toLocaleString()}`;
                 } else {
                     document.getElementById('posCalcDetails').innerText = "ไม่มีข้อมูล POS ถูกบันทึกไว้ในเครื่องนี้ (ยอดขาย: ฿0)";
                 }
