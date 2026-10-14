@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Profit Sharing & Attendance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-brand-500 rounded-xl text-white">
+                    <i class="fa-solid fa-chart-line text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">ระบบบันทึกกำไร & เช็คชื่อรายวัน</h1>
+                    <p class="text-xs text-brand-100">หัก 30% เข้าร้านก่อนแบ่ง / วันขาดทุนดึงทุนร้านมาจ่าย / เงินคนขาดแบ่งคนมา 80%</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('fileInput').click()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-upload"></i> Restore
+                </button>
+                <input type="file" id="fileInput" accept=".json" class="hidden" onchange="restoreData(event)">
+                <button onclick="backupData()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Backup
+                </button>
+                <button onclick="exportCSV()" class="bg-brand-600 hover:bg-brand-500 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                    <i class="fa-solid fa-file-csv"></i> ส่งออก Excel
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <div class="lg:col-span-4 space-y-6">
+                <div class="card p-6 border-t-4 border-brand-500">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square text-brand-500"></i> บันทึกกำไรประจำวัน
+                    </h2>
+                    
+                    <form id="recordForm" onsubmit="saveRecord(event)">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">วันที่</label>
+                                <input type="date" id="inputDate" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">กำไรสุทธิของวันนี้ (บาท)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">฿</span>
+                                    <!-- นำ min="0" ออก เพื่อให้กรอกเลขติดลบได้ -->
+                                    <input type="number" id="inputProfit" required step="any" placeholder="เช่น 2500 หรือ -50" class="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 font-semibold text-lg">
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">*กรณีขาดทุนให้ใส่เครื่องหมายลบ เช่น -50</p>
+                            </div>
+
+                            <!-- Attendance Toggles -->
+                            <div class="pt-4 border-t border-slate-100">
+                                <label class="block text-sm font-medium text-slate-700 mb-3">เช็คชื่อคนทำงาน (เปิด = มา / ปิด = ขาด)</label>
+                                <div class="space-y-3" id="attendanceContainer">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl shadow transition mt-6 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-save"></i> บันทึกข้อมูลวันนี้
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- Filter Section -->
+                <div class="card p-5 bg-white flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="fa-solid fa-calendar-days text-xl"></i></div>
+                        <h2 class="text-lg font-bold text-slate-800" id="currentViewTitle">สรุปยอด</h2>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <input type="month" id="filterMonth" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-auto" onchange="updateDashboard()">
+                        <select id="filterPeriod" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium text-brand-700 w-full sm:w-auto" onchange="updateDashboard()">
+                            <option value="1">รอบ 1 (วันที่ 1 - 15)</option>
+                            <option value="2">รอบ 2 (วันที่ 16 - สิ้นเดือน)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="card p-4 border-l-4 border-indigo-500">
+                        <p class="text-xs text-slate-500 font-semibold mb-1">กำไรสุทธิรวม (รอบนี้)</p>
+                        <h3 class="text-xl font-bold text-indigo-700" id="sumTotalProfit">฿0.00</h3>
+                    </div>
+                    <div class="card p-4 border-l-4 border-amber-500 bg-amber-50/30">
+                        <p class="text-xs text-slate-500 font-semibold mb-1">รวมเงินทุนร้าน</p>
+                        <h3 class="text-xl font-bold text-amber-600" id="sumShopFund">฿0.00</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="partnerSummaryContainer">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="card overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h3 class="font-bold text-slate-700">รายละเอียดรายวัน</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-slate-600">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-100/50">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold">วันที่</th>
+                                    <th class="px-4 py-3 font-semibold text-right">กำไรสุทธิ</th>
+                                    <th class="px-4 py-3 font-semibold text-right text-amber-600">เงินทุนร้าน</th>
+                                    <th class="px-4 py-3 font-semibold text-right" id="th-p1">น๊อตชะ</th>
+                                    <th class="px-4 py-3 font-semibold text-right" id="th-p2">อาลอนโซ่</th>
+                                    <th class="px-4 py-3 font-semibold text-right" id="th-p3">พีโซคิ้ว</th>
+                                    <th class="px-4 py-3 font-semibold text-right" id="th-p4">โอม</th>
+                                    <th class="px-4 py-3 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody" class="divide-y divide-slate-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i class="fa-solid fa-circle-info text-brand-400 text-lg"></i>
+        <span id="toastMsg" class="text-sm font-medium">Message</span>
+    </div>
+
+    <script>
+        const partners = [
+            { id: 'p1', name: 'น๊อตชะ', percent: 30, color: '#3b82f6' },
+            { id: 'p2', name: 'อาลอนโซ่', percent: 35, color: '#ef4444' },
+            { id: 'p3', name: 'พีโซคิ้ว', percent: 20, color: '#10b981' },
+            { id: 'p4', name: 'โอม', percent: 15, color: '#a855f7' }
+        ];
+
+        let records = [];
+
+        const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+        window.onload = function() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            
+            document.getElementById('inputDate').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
+            document.getElementById('filterPeriod').value = now.getDate() <= 15 ? "1" : "2";
+
+            renderAttendanceToggles();
+            loadRecords();
+            updateDashboard();
+        };
+
+        function renderAttendanceToggles() {
+            const container = document.getElementById('attendanceContainer');
+            container.innerHTML = '';
+            
+            partners.forEach(p => {
+                document.getElementById(`th-${p.id}`).innerText = `${p.name} (${p.percent}%)`;
+                
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></div>
+                            <span class="font-semibold text-sm text-slate-700">${p.name} <span class="text-xs font-normal text-slate-500">(${p.percent}%)</span></span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="attend_${p.id}" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                `;
+            });
+        }
+
+        function saveRecord(e) {
+            e.preventDefault();
+            
+            const dateStr = document.getElementById('inputDate').value;
+            const profit = parseFloat(document.getElementById('inputProfit').value);
+            
+            // เช็คว่ากรอกข้อมูลครบถ้วน และ profit ต้องเป็นตัวเลข (ยอมรับเลขติดลบได้)
+            if (!dateStr || isNaN(profit)) return;
+
+            const existingIndex = records.findIndex(r => r.date === dateStr);
+            if (existingIndex !== -1) {
+                if (!confirm(`มีข้อมูลของวันที่ ${dateStr} แล้ว ต้องการบันทึกทับหรือไม่?`)) return;
+            }
+
+            let shopFund = 0;
+            let payouts = {};
+            let attendances = {};
+
+            // บันทึกสถานะการมาทำงานไว้ก่อน และเซ็ตเงินเริ่มต้นเป็น 0
+            partners.forEach(p => {
+                attendances[p.id] = document.getElementById(`attend_${p.id}`).checked;
+                payouts[p.id] = 0;
+            });
+
+            if (profit < 0) {
+                // กรณีติดลบ (ขาดทุน) -> ดึงเงินจากทุนร้านมาจ่าย (เข้าร้านแบบติดลบ)
+                shopFund = profit; 
+                // ทุกคนได้เงิน = 0 ไม่ต้องคำนวณแบ่งเปอร์เซ็นต์
+            } else {
+                // กรณีมีกำไร (>= 0)
+                // 1. หัก 30% เข้าร้านก่อน
+                shopFund = profit * 0.30;
+                
+                // 2. เหลือ 70% นำมาแบ่งให้หุ้นส่วน
+                let distributableProfit = profit * 0.70;
+                
+                let absentPool = 0;
+                let presentPartners = [];
+
+                // คำนวณส่วนแบ่งจากยอด 70%
+                partners.forEach(p => {
+                    const isPresent = attendances[p.id];
+                    let shareAmount = distributableProfit * (p.percent / 100);
+                    
+                    if (isPresent) {
+                        payouts[p.id] = shareAmount;
+                        presentPartners.push(p.id);
+                    } else {
+                        absentPool += shareAmount; // สะสมเงินคนขาด
+                    }
+                });
+
+                // 3. จัดการเงินส่วนคนขาด (แบ่งคนมา 80%, เข้าร้าน 20%)
+                if (presentPartners.length > 0) {
+                    let bonusPool = absentPool * 0.80; // 80% ให้คนที่มา
+                    let bonusPerPerson = bonusPool / presentPartners.length; // หารเท่ากัน
+
+                    presentPartners.forEach(pId => {
+                        payouts[pId] += bonusPerPerson;
+                    });
+
+                    shopFund += (absentPool * 0.20); // 20% ของคนขาด เข้าทุนร้าน
+                } else {
+                    // ถ้าไม่มีใครมาเลย เงินของคนขาด (ยอด 70% ทั้งหมด) จะเข้าทุนร้าน
+                    shopFund += absentPool;
+                }
+            }
+
+            const newRecord = {
+                id: Date.now().toString(),
+                date: dateStr,
+                profit: profit,
+                shopFund: shopFund,
+                payouts: payouts,
+                attendances: attendances
+            };
+
+            if (existingIndex !== -1) {
+                records[existingIndex] = newRecord;
+            } else {
+                records.push(newRecord);
+            }
+
+            records.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            saveToLocalStorage();
+            
+            const rDate = new Date(dateStr);
+            const rYear = rDate.getFullYear();
+            const rMonth = String(rDate.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filterMonth').value = `${rYear}-${rMonth}`;
+            document.getElementById('filterPeriod').value = rDate.getDate() <= 15 ? "1" : "2";
+            
+            updateDashboard();
+
+            showToast(`บันทึกข้อมูลวันที่ ${dateStr} เรียบร้อย`);
+            document.getElementById('inputProfit').value = '';
+        }
+
+        function updateDashboard() {
+            const filterMonthStr = document.getElementById('filterMonth').value;
+            const filterPeriod = parseInt(document.getElementById('filterPeriod').value);
+            
+            if (!filterMonthStr) return;
+            const [year, month] = filterMonthStr.split('-');
+            const yearNum = parseInt(year);
+            const monthNum = parseInt(month) - 1;
+
+            const mName = thaiMonths[monthNum];
+            document.getElementById('currentViewTitle').innerText = `${mName} ${yearNum + 543} - รอบ ${filterPeriod}`;
+
+            const filteredRecords = records.filter(r => {
+                const rDate = new Date(r.date);
+                if (rDate.getFullYear() !== yearNum || rDate.getMonth() !== monthNum) return false;
+                
+                const d = rDate.getDate();
+                if (filterPeriod === 1) return d >= 1 && d <= 15;
+                if (filterPeriod === 2) return d >= 16;
+                return false;
+            });
+
+            renderTableAndSummaries(filteredRecords);
+        }
+
+        function renderTableAndSummaries(filteredRecords) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            let sumProfit = 0;
+            let sumShopFund = 0;
+            let sumPayouts = { p1: 0, p2: 0, p3: 0, p4: 0 };
+
+            if (filteredRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-400 font-medium bg-slate-50/50">ไม่มีข้อมูลบันทึกในรอบนี้</td></tr>';
+            } else {
+                filteredRecords.forEach(r => {
+                    sumProfit += r.profit;
+                    sumShopFund += r.shopFund;
+                    
+                    let partnerCols = '';
+                    partners.forEach(p => {
+                        const amt = r.payouts[p.id];
+                        const isPresent = r.attendances ? r.attendances[p.id] : amt > 0;
+                        sumPayouts[p.id] += amt;
+
+                        const presentHtml = isPresent 
+                            ? `฿${formatNo(amt)}` 
+                            : `<span class="text-xs text-rose-500 font-semibold bg-rose-50 px-1.5 py-0.5 rounded">ขาด</span>`;
+                        
+                        // ถ้ากำไรติดลบ และมาทำงาน จะแสดงเป็น ฿0 ไม่แสดงเป็นขาด
+                        const displayHtml = (r.profit < 0 && isPresent) ? '฿0' : presentHtml;
+
+                        partnerCols += `<td class="px-4 py-3 text-right text-slate-700 ${!isPresent ? 'bg-rose-50/30':''}">${displayHtml}</td>`;
+                    });
+
+                    // ตกแต่งสีของเงินทุนร้าน (เขียว/แดง ตามค่าบวก/ลบ)
+                    let shopFundDisplay = '';
+                    let shopFundClass = '';
+                    if (r.shopFund > 0) {
+                        shopFundDisplay = '+฿' + formatNo(r.shopFund);
+                        shopFundClass = 'text-amber-600 bg-amber-50/20';
+                    } else if (r.shopFund < 0) {
+                        shopFundDisplay = '-฿' + formatNo(Math.abs(r.shopFund));
+                        shopFundClass = 'text-rose-600 bg-rose-50/20';
+                    } else {
+                        shopFundDisplay = '฿0';
+                        shopFundClass = 'text-slate-500';
+                    }
+
+                    // ตกแต่งสีกำไรสุทธิ (กรณีติดลบให้เป็นสีแดง)
+                    const profitClass = r.profit >= 0 ? 'text-slate-800' : 'text-rose-600';
+                    const profitDisplay = r.profit >= 0 ? `฿${formatNo(r.profit)}` : `-฿${formatNo(Math.abs(r.profit))}`;
+
+                    const rowHtml = `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+                            <td class="px-4 py-3 font-medium whitespace-nowrap">${formatDate(r.date)}</td>
+                            <td class="px-4 py-3 text-right font-semibold ${profitClass}">${profitDisplay}</td>
+                            <td class="px-4 py-3 text-right font-semibold"><span class="px-1.5 py-0.5 rounded ${shopFundClass}">${shopFundDisplay}</span></td>
+                            ${partnerCols}
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="deleteRecord('${r.id}')" class="text-slate-400 hover:text-rose-500 transition p-1" title="ลบข้อมูล">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += rowHtml;
+                });
+            }
+
+            // อัปเดตส่วนหัวสรุปยอดรวม
+            document.getElementById('sumTotalProfit').innerText = sumProfit >= 0 ? '฿' + formatNo(sumProfit) : '-฿' + formatNo(Math.abs(sumProfit));
+            // เปลี่ยนสีตามยอดรวมเงินร้าน (บวก=ส้ม, ลบ=แดง)
+            const sumShopFundEl = document.getElementById('sumShopFund');
+            if (sumShopFund >= 0) {
+                sumShopFundEl.innerText = '฿' + formatNo(sumShopFund);
+                sumShopFundEl.className = 'text-xl font-bold text-amber-600';
+            } else {
+                sumShopFundEl.innerText = '-฿' + formatNo(Math.abs(sumShopFund));
+                sumShopFundEl.className = 'text-xl font-bold text-rose-600';
+            }
+
+            const pContainer = document.getElementById('partnerSummaryContainer');
+            pContainer.innerHTML = '';
+            partners.forEach(p => {
+                pContainer.innerHTML += `
+                    <div class="card p-4 border-l-4" style="border-color: ${p.color}">
+                        <p class="text-xs text-slate-500 font-semibold mb-1">${p.name} (${p.percent}%)</p>
+                        <h3 class="text-lg font-bold text-slate-800">฿${formatNo(sumPayouts[p.id])}</h3>
+                    </div>
+                `;
+            });
+        }
+
+        function deleteRecord(id) {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลวันนี้?')) {
+                records = records.filter(r => r.id !== id);
+                saveToLocalStorage();
+                updateDashboard();
+                showToast('ลบข้อมูลเรียบร้อยแล้ว');
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('daily_profit_records', JSON.stringify(records));
+        }
+
+        function loadRecords() {
+            const saved = localStorage.getItem('daily_profit_records');
+            if (saved) {
+                try {
+                    records = JSON.parse(saved);
+                } catch (e) {
+                    records = [];
+                }
+            }
+        }
+
+        function backupData() {
+            if (records.length === 0) {
+                showToast('ไม่มีข้อมูลสำหรับ Backup');
+                return;
+            }
+            const dataStr = JSON.stringify(records, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_profit_data_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('ดาวน์โหลดไฟล์ Backup สำเร็จ');
+        }
+
+        function restoreData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        records = importedData;
+                        saveToLocalStorage();
+                        updateDashboard();
+                        showToast('นำเข้าข้อมูลสำเร็จ!');
+                    } else {
+                        alert('ไฟล์ข้อมูลไม่ถูกต้อง');
+                    }
+                } catch (err) {
+                    alert('เกิดข้อผิดพลาดในการอ่านไฟล์ JSON');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function exportCSV() {
+            const filterMonthStr = document.getElementById('filterMonth').value;
+            const filterPeriod = parseInt(document.getElementById('filterPeriod').value);
+            
+            const [year, month] = filterMonthStr.split('-');
+            const yearNum = parseInt(year);
+            const monthNum = parseInt(month) - 1;
+
+            const filteredRecords = records.filter(r => {
+                const rDate = new Date(r.date);
+                if (rDate.getFullYear() !== yearNum || rDate.getMonth() !== monthNum) return false;
+                const d = rDate.getDate();
+                if (filterPeriod === 1) return d >= 1 && d <= 15;
+                return d >= 16;
+            });
+
+            if (filteredRecords.length === 0) {
+                showToast('ไม่มีข้อมูลในรอบนี้สำหรับส่งออก');
+                return;
+            }
+
+            let csvContent = "\uFEFF";
+            csvContent += "วันที่,กำไรสุทธิ,เงินทุนร้าน,น๊อตชะ,อาลอนโซ่,พีโซคิ้ว,โอม\n";
+
+            filteredRecords.forEach(r => {
+                const row = [
+                    r.date,
+                    r.profit,
+                    r.shopFund,
+                    r.payouts.p1,
+                    r.payouts.p2,
+                    r.payouts.p3,
+                    r.payouts.p4
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Profit_Summary_${filterMonthStr}_P${filterPeriod}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('ส่งออกเป็นไฟล์ Excel สำเร็จ');
+        }
+
+        function formatNo(num) {
+            return Number(num).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return `${date.getDate()} ${thaiMonths[date.getMonth()]}`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

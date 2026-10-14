@@ -13,34 +13,181 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// เปลี่ยนมาใช้ createPool
+// ==========================================
+// 🗄️ DATABASE CONNECTION POOL
+// (รองรับทั้งตัวแปร DB_* และ MYSQL_ADDON_*)
+// ==========================================
 const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+    host: process.env.DB_HOST || process.env.MYSQL_ADDON_HOST || 'b7ugjqxplhd9vdliphnu-mysql.services.clever-cloud.com',
+    user: process.env.DB_USER || process.env.MYSQL_ADDON_USER || 'uqtvlwaikceun2hs',
+    password: process.env.DB_PASSWORD || process.env.MYSQL_ADDON_PASSWORD,
+    database: process.env.DB_NAME || process.env.MYSQL_ADDON_DB || 'b7ugjqxplhd9vdliphnu',
+    port: process.env.DB_PORT || process.env.MYSQL_ADDON_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
+// Promise wrapper สำหรับระบบทอดเล่น
+const promiseDb = db.promise();
+
+function getBranchTable(branch, tableType) {
+    const validBranches = ['korat', 'buriram'];
+    if (!validBranches.includes(branch)) throw new Error('สาขาไม่ถูกต้อง');
+    return `${branch}_${tableType}`;
+}
+
 // ==========================================
-// 🌐 PAGE ROUTES (เส้นทางสำหรับเปิดหน้าเว็บ)
+// 🌐 PAGE ROUTES (ระบบเดิม + ระบบทอดเล่น)
 // ==========================================
 
-// หน้าห้องครัวสำหรับ มือถือ/คอมพิวเตอร์ รุ่นใหม่
+// --- ระบบเดิม (แจ่วฮ้อน) ---
 app.get('/kitchen', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'kitchen.html'));
 });
 
-// หน้าห้องครัวสำหรับ Samsung Tab E (แท็บเล็ตรุ่นเก่า)
 app.get('/kitchen-legacy', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'kitchen-legacy.html'));
 });
 
+app.get('/history', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
+// --- ระบบใหม่ (ทอดเล่น) ---
+app.get('/todlen/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'todlen-login.html'));
+});
+
+app.get('/todlen/select-branch', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'todlen-select.html'));
+});
+
+app.get('/todlen/:branch/pos', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'todlen-pos.html'));
+});
+
+app.get('/todlen/:branch/profit', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'todlen-profit.html'));
+});
+
+
 // ==========================================
-// 🔌 SOCKET.IO REAL-TIME SYSTEM
+// 🍟 API SYSTEM #2: ระบบทอดเล่น (Todlen System)
+// ==========================================
+
+// 1. API เข้าสู่ระบบกลาง
+app.post('/api/todlen/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const [rows] = await promiseDb.query('SELECT * FROM todlen_users WHERE username = ?', [username]);
+        
+        if (rows.length === 0 || rows[0].password_hash !== password) {
+            return res.status(401).json({ success: false, message: 'Username หรือ Password ไม่ถูกต้อง' });
+        }
+
+        const user = rows[0];
+        let redirectTo = user.role === 'admin' ? '/todlen/select-branch' : `/todlen/${user.branch}/profit`;
+        res.json({ success: true, user: { name: user.name, role: user.role, branch: user.branch }, redirectTo });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 2. API ตรวจสอบออเดอร์ซ้ำจากชื่อลูกค้า / เพจ Facebook
+app.get('/api/todlen/:branch/check-duplicate-customer', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { customerName, date } = req.query;
+        const ordersTable = getBranchTable(branch, 'orders');
+
+        const [rows] = await promiseDb.query(
+            `SELECT id, order_time, total_amount FROM ${ordersTable} WHERE order_date = ? AND customer_name = ? AND customer_name != 'ลูกค้าหน้าร้าน'`,
+            [date, customerName]
+        );
+
+        res.json({ isDuplicate: rows.length > 0, existingOrders: rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. API ดึงยอดกำไรสุทธิจาก POS อัตโนมัติส่งให้หน้าระบบส่วนแบ่ง
+app.get('/api/todlen/:branch/pos-net-profit', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { date } = req.query;
+
+        const ordersTable = getBranchTable(branch, 'orders');
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+
+        const [[sales]] = await promiseDb.query(`SELECT COALESCE(SUM(total_amount), 0) AS total FROM ${ordersTable} WHERE order_date = ?`, [date]);
+        const [[market]] = await promiseDb.query(`SELECT COALESCE(SUM(total_amount), 0) AS total FROM ${marketTable} WHERE expense_date = ?`, [date]);
+        const [[petty]] = await promiseDb.query(`SELECT COALESCE(SUM(total_amount), 0) AS total FROM ${pettyTable} WHERE expense_date = ?`, [date]);
+
+        const totalSales = parseFloat(sales.total);
+        const totalMarket = parseFloat(market.total);
+        const totalPetty = parseFloat(petty.total);
+        const netProfit = totalSales - totalMarket - totalPetty;
+
+        res.json({ success: true, date, totalSales, totalMarket, totalPetty, netProfit });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 4. API บันทึกส่วนแบ่งกำไร (สูตรบุรีรัมย์ 40%/40% + 20% โยนเข้าทุนโคราช)
+app.post('/api/todlen/:branch/save-daily-profit', async (req, res) => {
+    const connection = await promiseDb.getConnection();
+    try {
+        await connection.beginTransaction();
+        const { branch } = req.params;
+        const { recordDate, posNetProfit, finalProfit } = req.body;
+
+        let shopFund = 0;
+        let koratBonusFund = 0;
+
+        if (branch === 'buriram') {
+            if (finalProfit > 0) {
+                koratBonusFund = finalProfit * 0.20; // 20% บุรีรัมย์เข้าทุนโคราช
+            } else {
+                koratBonusFund = finalProfit;
+            }
+        } else {
+            shopFund = finalProfit > 0 ? finalProfit * 0.30 : finalProfit;
+        }
+
+        const profitTable = `${branch}_daily_profit_records`;
+        await connection.query(
+            `INSERT INTO ${profitTable} (record_date, pos_net_profit, final_profit, shop_fund) 
+             VALUES (?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE pos_net_profit=?, final_profit=?, shop_fund=?`,
+            [recordDate, posNetProfit, finalProfit, shopFund, posNetProfit, finalProfit, shopFund]
+        );
+
+        if (branch === 'buriram' && koratBonusFund !== 0) {
+            await connection.query(
+                `INSERT INTO korat_daily_profit_records (record_date, pos_net_profit, final_profit, shop_fund)
+                 VALUES (?, 0, 0, ?)
+                 ON DUPLICATE KEY UPDATE shop_fund = shop_fund + ?`,
+                [recordDate, koratBonusFund, koratBonusFund]
+            );
+        }
+
+        await connection.commit();
+        res.json({ success: true, message: 'บันทึกส่วนแบ่งกำไรเรียบร้อยแล้ว' });
+    } catch (err) {
+        await connection.rollback();
+        res.status(500).json({ success: false, message: err.message });
+    } finally {
+        connection.release();
+    }
+});
+
+
+// ==========================================
+// 🔌 SOCKET.IO REAL-TIME SYSTEM (ระบบเดิม)
 // ==========================================
 io.on('connection', (socket) => {
     socket.on('get_bill_details', (tableNum) => {
@@ -75,6 +222,10 @@ function notifyActiveTables() {
     });
 }
 
+
+// ==========================================
+// 🍲 API SYSTEM #1: ระบบสั่งอาหารเดิม (แจ่วฮ้อน)
+// ==========================================
 
 app.get('/api/orders/pending', (req, res) => {
     const sql = `
@@ -202,11 +353,6 @@ app.put('/api/orders/serve-table/:tableNum', (req, res) => {
     });
 });
 
-// ==========================================
-// 📜 HISTORY API ENDPOINTS (แก้ไขให้รองรับ MariaDB 10.4)
-// ==========================================
-
-// 1. ดึงตารางประวัติบิลทั้งหมดที่จ่ายเงินแล้ว (จัดกลุ่มตาม bill_id)
 app.get('/api/orders/history', (req, res) => {
     const sql = `
         SELECT 
@@ -230,7 +376,6 @@ app.get('/api/orders/history', (req, res) => {
     });
 });
 
-// 2. ดึงรายการอาหารของบิลเก่าตาม ID หรือ Bill ID (สำหรับใช้ปริ้นใบเสร็จย้อนหลัง)
 app.get('/api/orders/history/:id/items', (req, res) => {
     const historyId = req.params.id;
     const sql = "SELECT menu_name, price, qty FROM orders WHERE bill_id = ? OR id = ?";
@@ -243,11 +388,6 @@ app.get('/api/orders/history/:id/items', (req, res) => {
     });
 });
 
-// ==========================================
-// 🍔 API ENDPOINTS (ระบบจัดการเมนูอาหาร Admin)
-// ==========================================
-
-// [ดึงข้อมูลลำดับหมวดหมู่]
 app.get('/api/category-order', (req, res) => {
     const sql = "SELECT setting_value FROM system_settings WHERE setting_key = 'category_order'";
     db.query(sql, (err, results) => {
@@ -268,7 +408,6 @@ app.get('/api/category-order', (req, res) => {
     });
 });
 
-// [บันทึกลำดับหมวดหมู่]
 app.post('/api/category-order', (req, res) => {
     const orderList = req.body.order_list || [];
     const jsonString = JSON.stringify(orderList);
@@ -283,7 +422,6 @@ app.post('/api/category-order', (req, res) => {
     });
 });
 
-// [ดึงข้อมูล]
 app.get('/api/menus', (req, res) => {
     const sql = "SELECT * FROM menus ORDER BY category, id ASC";
     db.query(sql, (err, results) => {
@@ -295,7 +433,6 @@ app.get('/api/menus', (req, res) => {
     });
 });
 
-// [เพิ่มเมนูใหม่] - *เพิ่ม spiciness ที่นี่*
 app.post('/api/menus', (req, res) => {
     const { name, price, category, image_url, meats, addons, spiciness } = req.body;
     const sql = "INSERT INTO menus (name, price, category, image_url, meats, addons, spiciness) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -305,7 +442,6 @@ app.post('/api/menus', (req, res) => {
     });
 });
 
-// [แก้ไขเมนู] - *เพิ่ม spiciness ที่นี่*
 app.put('/api/menus/:id', (req, res) => {
     const { name, price, category, image_url, meats, addons, spiciness } = req.body;
     const sql = "UPDATE menus SET name=?, price=?, category=?, image_url=?, meats=?, addons=?, spiciness=? WHERE id=?";
@@ -315,7 +451,6 @@ app.put('/api/menus/:id', (req, res) => {
     });
 });
 
-// [ลบเมนู]
 app.delete('/api/menus/:id', (req, res) => {
     const sql = "DELETE FROM menus WHERE id=?";
     db.query(sql, [req.params.id], (err, result) => {
@@ -324,16 +459,6 @@ app.delete('/api/menus/:id', (req, res) => {
     });
 });
 
-// ==========================================
-// 📜 HISTORY & SUMMARY API ENDPOINTS
-// ==========================================
-
-// หน้าเว็บดูประวัติและสรุปยอด
-app.get('/history', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'history.html'));
-});
-
-// 1. ดึงประวัติบิลทั้งหมด (รวมรายการในบิลเดียวกันเป็น 1 ช่อง)
 app.get('/api/orders/history-grouped', (req, res) => {
     const sql = `
         SELECT 
@@ -358,7 +483,6 @@ app.get('/api/orders/history-grouped', (req, res) => {
     });
 });
 
-// 2. ดึงรายละเอียดของบิลเดี่ยว (ใช้สำหรับแก้ไขบิล)
 app.get('/api/orders/history/bill/:billId', (req, res) => {
     const billId = req.params.billId;
     const sql = "SELECT * FROM orders WHERE bill_id = ?";
@@ -368,17 +492,14 @@ app.get('/api/orders/history/bill/:billId', (req, res) => {
     });
 });
 
-// 3. แก้ไขข้อมูลในบิล (เปลี่ยนวิธีชำระเงิน หรือปรับเปลี่ยนรายการ)
 app.put('/api/orders/history/bill/:billId', (req, res) => {
     const billId = req.params.billId;
     const { payment_method, items } = req.body;
 
-    // อัปเดตวิธีชำระเงินทุกรายการในบิล
     const updatePaySql = "UPDATE orders SET payment_method = ? WHERE bill_id = ?";
     db.query(updatePaySql, [payment_method, billId], (err) => {
         if (err) return res.status(500).json(err);
 
-        // อัปเดตรายการแต่ละชิ้น (ราคา / จำนวน)
         if (items && Array.isArray(items)) {
             const promises = items.map(item => {
                 return new Promise((resolve, reject) => {
@@ -399,7 +520,6 @@ app.put('/api/orders/history/bill/:billId', (req, res) => {
     });
 });
 
-// 4. ลบบิลย้อนหลัง
 app.delete('/api/orders/history/bill/:billId', (req, res) => {
     const billId = req.params.billId;
     const sql = "DELETE FROM orders WHERE bill_id = ?";
@@ -409,7 +529,6 @@ app.delete('/api/orders/history/bill/:billId', (req, res) => {
     });
 });
 
-// 5. ดึงข้อมูลสรุปยอดขาย (รองรับ รายวัน รายสัปดาห์ รายเดือน)
 app.get('/api/orders/summary-report', (req, res) => {
     const { start_date, end_date } = req.query;
 
@@ -454,19 +573,9 @@ app.get('/api/orders/summary-report', (req, res) => {
     });
 });
 
-// ==========================================
-
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-    console.log(`เซิร์ฟเวอร์ทำงานเรียบร้อยที่ http://localhost:${PORT}`);
-});
-
-// ==========================================
-// 🔒 AUTH API (ย้ายการเช็กรหัสผ่านมาระบบหลังบ้าน)
-// ==========================================
 app.post('/api/auth/login', (req, res) => {
     const { password } = req.body;
-    const SYSTEM_PASSWORD = process.env.SYSTEM_PASSWORD || "31102015"; // ตั้งรหัสผ่านที่นี่ที่เดียว
+    const SYSTEM_PASSWORD = process.env.SYSTEM_PASSWORD || "31102015";
 
     if (password === SYSTEM_PASSWORD) {
         res.json({ success: true });
@@ -475,22 +584,16 @@ app.post('/api/auth/login', (req, res) => {
     }
 });
 
-// ==========================================
-// 🚀 ปรับปรุง API รับออเดอร์ (คำนวณราคารวมท็อปปิ้ง)
-// ==========================================
 app.post('/api/orders/batch', (req, res) => {
     const { table_number, items } = req.body;
     if (!items || items.length === 0) return res.status(400).json({ message: 'ตะกร้าว่างเปล่า' });
 
-    // ดึงราคาฐานของทุกเมนูมาตรวจสอบป้องกันการแก้ไขราคาฝั่งลูกค้า
     db.query("SELECT name, price FROM menus", (err, menus) => {
         if (err) return res.status(500).json(err);
         const priceMap = new Map(menus.map(m => [m.name, m.price]));
 
         const values = items.map(item => {
             const basePrice = priceMap.get(item.menu_name) || 0;
-            // ถ้าราคาที่ส่งมาน้อยกว่าราคาฐานใน DB ให้ใช้ราคาฐาน (ป้องกันการซื้อของ 0 บาท)
-            // แต่ยอมรับราคาที่สูงกว่าราคาฐาน (กรณีมีท็อปปิ้งบวกเพิ่ม เช่น +10 บาท)
             const validatedPrice = (item.price >= basePrice) ? item.price : basePrice;
 
             return [table_number, item.menu_name, validatedPrice, item.qty || 1, item.addons || '', 'pending'];
@@ -503,4 +606,12 @@ app.post('/api/orders/batch', (req, res) => {
             res.json({ message: 'สั่งอาหารสำเร็จ', inserted_count: result.affectedRows });
         });
     });
+});
+
+// ==========================================
+// 🚀 START SERVER
+// ==========================================
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`เซิร์ฟเวอร์ทำงานเรียบร้อยที่ http://localhost:${PORT}`);
 });
