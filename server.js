@@ -33,8 +33,6 @@ const promiseDb = db.promise();
 // ==========================================
 // 🔐 SIGNED SESSION + AUDIT LOGGING
 // ==========================================
-// ตั้งค่า SESSION_SECRET ใน Environment Variables ของโฮสต์ให้เป็นค่าสุ่มยาวอย่างน้อย 32 ตัวอักษร
-// ถ้าไม่ได้ตั้งค่า จะใช้ secret ชั่วคราวและผู้ใช้ต้อง login ใหม่เมื่อเซิร์ฟเวอร์ restart
 const SESSION_COOKIE = 'todlen_session';
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.LOG_SESSION_SECRET || crypto.randomBytes(48).toString('hex');
@@ -199,7 +197,6 @@ function safeAuditMetadata(body = {}) {
     return safe;
 }
 
-// Log every state-changing API call. Passwords and secret fields are deliberately never captured.
 app.use((req, res, next) => {
     const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
     if (!mutating || !req.path.startsWith('/api/') || ['/api/todlen/login', '/api/todlen/logout'].includes(req.path)) return next();
@@ -409,7 +406,7 @@ app.get('/api/todlen/:branch/pos-net-profit', async (req, res) => {
     }
 });
 
-// 4. บันทึกส่วนแบ่งกำไร (รองรับ payouts, attendances และ shopFund แบบ Dynamic)
+// 4. บันทึกส่วนแบ่งกำไร
 app.post('/api/todlen/:branch/save-daily-profit', async (req, res) => {
     try {
         const { branch } = req.params;
@@ -534,12 +531,10 @@ app.get('/api/todlen/:branch/partners', async (req, res) => {
 app.post('/api/todlen/:branch/partners', async (req, res) => {
     try {
         const { branch } = req.params;
-        // เปลี่ยนการรับค่าให้ตรงกับฐานข้อมูล (name, share_percent)
         const { name, share_percent } = req.body; 
         const partnerTable = getBranchTable(branch, 'partners');
 
         const [result] = await promiseDb.query(
-            // แก้ไขชื่อคอลัมน์ในคำสั่ง SQL ให้เป็น name และ share_percent
             `INSERT INTO ${partnerTable} (name, share_percent) VALUES (?, ?)`,
             [name, share_percent]
         );
@@ -548,15 +543,14 @@ app.post('/api/todlen/:branch/partners', async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
 app.put('/api/todlen/:branch/partners/:id', async (req, res) => {
     try {
         const { branch, id } = req.params;
-        // เปลี่ยนการรับค่าให้ตรงกับฐานข้อมูล (name, share_percent)
         const { name, share_percent } = req.body;
         const partnerTable = getBranchTable(branch, 'partners');
 
         await promiseDb.query(
-            // แก้ไขชื่อคอลัมน์ในคำสั่ง SQL ให้เป็น name และ share_percent
             `UPDATE ${partnerTable} SET name = ?, share_percent = ? WHERE id = ?`,
             [name, share_percent, id]
         );
@@ -603,6 +597,209 @@ app.post('/api/todlen/:branch/config', async (req, res) => {
             [`${branch}_shop_fund_percent`, shopFundPercent.toString(), shopFundPercent.toString()]
         );
         res.json({ success: true, message: 'อัปเดต % หักเข้าทุนร้านเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+
+// ==========================================
+// 🍟 POS LIVE ONLINE API ENDPOINTS (ร้านทอดเล่น)
+// ==========================================
+
+// 1. ดึงข้อมูลสรุป POS (ออเดอร์, ค่าตลาด, เบิกย่อย) สดจาก MySQL
+app.get('/api/todlen/:branch/pos-summary', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { mode, date, month } = req.query;
+        const ordersTable = getBranchTable(branch, 'orders');
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+
+        let dateCondOrders = '', dateCondMarket = '', dateCondPetty = '';
+        let params = [];
+
+        if (mode === 'daily' && date) {
+            dateCondOrders = 'WHERE order_date = ?';
+            dateCondMarket = 'WHERE expense_date = ?';
+            dateCondPetty = 'WHERE expense_date = ?';
+            params = [date];
+        } else if (mode === 'monthly' && month) {
+            dateCondOrders = 'WHERE order_date LIKE ?';
+            dateCondMarket = 'WHERE expense_date LIKE ?';
+            dateCondPetty = 'WHERE expense_date LIKE ?';
+            params = [`${month}%`];
+        }
+
+        const [orders] = await promiseDb.query(`SELECT * FROM ${ordersTable} ${dateCondOrders} ORDER BY id DESC`, params);
+        const [marketExpenses] = await promiseDb.query(`SELECT * FROM ${marketTable} ${dateCondMarket} ORDER BY id DESC`, params);
+        const [pettyExpenses] = await promiseDb.query(`SELECT * FROM ${pettyTable} ${dateCondPetty} ORDER BY id DESC`, params);
+
+        const totalSales = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+        const totalMarket = marketExpenses.reduce((sum, m) => sum + parseFloat(m.total_amount || 0), 0);
+        const totalPetty = pettyExpenses.reduce((sum, p) => sum + parseFloat(p.total_amount || 0), 0);
+
+        res.json({ success: true, totalSales, totalMarket, totalPetty, orders, marketExpenses, pettyExpenses });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 2. ดึงรายการเมนูตามสาขา ( korat_menu_items / buriram_menu_items )
+app.get('/api/todlen/:branch/menu-items', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const menuTable = getBranchTable(branch, 'menu_items');
+        const [items] = await promiseDb.query(`SELECT * FROM ${menuTable} WHERE is_active = 1 ORDER BY id ASC`);
+        res.json({ success: true, items });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. เพิ่มเมนูอาหารตามสาขา
+app.post('/api/todlen/:branch/menu-items', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { name, price } = req.body;
+        const menuTable = getBranchTable(branch, 'menu_items');
+        const [result] = await promiseDb.query(
+            `INSERT INTO ${menuTable} (name, price, is_active) VALUES (?, ?, 1)`,
+            [name, price]
+        );
+        res.json({ success: true, message: 'เพิ่มเมนูเรียบร้อยแล้ว', insertId: result.insertId });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 4. ลบเมนูอาหารตามสาขา
+app.delete('/api/todlen/:branch/menu-items/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const menuTable = getBranchTable(branch, 'menu_items');
+        await promiseDb.query(`DELETE FROM ${menuTable} WHERE id = ?`, [id]);
+        res.json({ success: true, message: 'ลบเมนูเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 5. บันทึกออเดอร์ขายสดลง MySQL
+app.post('/api/todlen/:branch/orders', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { customerName, orderDate, orderTime, orderItems, totalAmount } = req.body;
+        const ordersTable = getBranchTable(branch, 'orders');
+        await promiseDb.query(
+            `INSERT INTO ${ordersTable} (customer_name, order_date, order_time, order_items, total_amount) VALUES (?, ?, ?, ?, ?)`,
+            [customerName || 'ลูกค้าหน้าร้าน', orderDate, orderTime, JSON.stringify(orderItems || []), totalAmount]
+        );
+        res.json({ success: true, message: 'บันทึกออเดอร์ลง Database สำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 6. แก้ไขออเดอร์
+app.put('/api/todlen/:branch/orders/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const { totalAmount } = req.body;
+        const ordersTable = getBranchTable(branch, 'orders');
+        await promiseDb.query(`UPDATE ${ordersTable} SET total_amount = ? WHERE id = ?`, [totalAmount, id]);
+        res.json({ success: true, message: 'แก้ไขออเดอร์เรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 7. ลบออเดอร์
+app.delete('/api/todlen/:branch/orders/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const ordersTable = getBranchTable(branch, 'orders');
+        await promiseDb.query(`DELETE FROM ${ordersTable} WHERE id = ?`, [id]);
+        res.json({ success: true, message: 'ลบออเดอร์เรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 8. บันทึกค่าตลาด
+app.post('/api/todlen/:branch/market-expenses', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { expenseDate, totalAmount } = req.body;
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        await promiseDb.query(`INSERT INTO ${marketTable} (expense_date, total_amount) VALUES (?, ?)`, [expenseDate, totalAmount]);
+        res.json({ success: true, message: 'บันทึกค่าตลาดสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 9. แก้ไขค่าตลาด
+app.put('/api/todlen/:branch/market-expenses/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const { totalAmount } = req.body;
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        await promiseDb.query(`UPDATE ${marketTable} SET total_amount = ? WHERE id = ?`, [totalAmount, id]);
+        res.json({ success: true, message: 'แก้ไขค่าตลาดเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 10. ลบค่าตลาด
+app.delete('/api/todlen/:branch/market-expenses/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const marketTable = getBranchTable(branch, 'market_expenses');
+        await promiseDb.query(`DELETE FROM ${marketTable} WHERE id = ?`, [id]);
+        res.json({ success: true, message: 'ลบค่าตลาดเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 11. บันทึกเบิกย่อย
+app.post('/api/todlen/:branch/petty-expenses', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { expenseDate, expenseTime, title, totalAmount } = req.body;
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+        await promiseDb.query(
+            `INSERT INTO ${pettyTable} (expense_date, expense_time, title, total_amount) VALUES (?, ?, ?, ?)`,
+            [expenseDate, expenseTime, title, totalAmount]
+        );
+        res.json({ success: true, message: 'บันทึกเบิกย่อยสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 12. แก้ไขเบิกย่อย
+app.put('/api/todlen/:branch/petty-expenses/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const { title, totalAmount } = req.body;
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+        await promiseDb.query(`UPDATE ${pettyTable} SET title = ?, total_amount = ? WHERE id = ?`, [title, totalAmount, id]);
+        res.json({ success: true, message: 'แก้ไขเบิกย่อยเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 13. ลบเบิกย่อย
+app.delete('/api/todlen/:branch/petty-expenses/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const pettyTable = getBranchTable(branch, 'petty_expenses');
+        await promiseDb.query(`DELETE FROM ${pettyTable} WHERE id = ?`, [id]);
+        res.json({ success: true, message: 'ลบเบิกย่อยเรียบร้อยแล้ว' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -900,171 +1097,9 @@ app.post('/api/orders/batch', (req, res) => {
 
 
 // ==========================================
-// 🚀 START SERVER (ย้ายมาไว้ท้ายสุด)
+// 🚀 START SERVER
 // ==========================================
 const PORT = process.env.PORT || 8080;
-// 🛒 1. ดึงข้อมูลสรุป POS สดจาก MySQL (แยกตามสาขา)
-app.get('/api/todlen/:branch/pos-summary', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { mode, date, month } = req.query;
-        const ordersTable = getBranchTable(branch, 'orders');
-        const marketTable = getBranchTable(branch, 'market_expenses');
-        const pettyTable = getBranchTable(branch, 'petty_expenses');
-
-        let dateCondOrders = '', dateCondMarket = '', dateCondPetty = '';
-        let params = [];
-
-        if (mode === 'daily' && date) {
-            dateCondOrders = 'WHERE order_date = ?';
-            dateCondMarket = 'WHERE expense_date = ?';
-            dateCondPetty = 'WHERE expense_date = ?';
-            params = [date];
-        } else if (mode === 'monthly' && month) {
-            dateCondOrders = 'WHERE order_date LIKE ?';
-            dateCondMarket = 'WHERE expense_date LIKE ?';
-            dateCondPetty = 'WHERE expense_date LIKE ?';
-            params = [`${month}%`];
-        }
-
-        const [orders] = await promiseDb.query(`SELECT * FROM ${ordersTable} ${dateCondOrders} ORDER BY id DESC`, params);
-        const [marketExpenses] = await promiseDb.query(`SELECT * FROM ${marketTable} ${dateCondMarket} ORDER BY id DESC`, params);
-        const [pettyExpenses] = await promiseDb.query(`SELECT * FROM ${pettyTable} ${dateCondPetty} ORDER BY id DESC`, params);
-
-        const totalSales = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
-        const totalMarket = marketExpenses.reduce((sum, m) => sum + parseFloat(m.total_amount || 0), 0);
-        const totalPetty = pettyExpenses.reduce((sum, p) => sum + parseFloat(p.total_amount || 0), 0);
-
-        res.json({ success: true, totalSales, totalMarket, totalPetty, orders, marketExpenses, pettyExpenses });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 📋 2. ดึงเมนูอาหารตามสาขา
-app.get('/api/todlen/:branch/menu-items', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const menuTable = getBranchTable(branch, 'menu');
-        const [items] = await promiseDb.query(`SELECT * FROM ${menuTable} ORDER BY id ASC`);
-        res.json({ success: true, items });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 🛒 3. บันทึกค่าตลาด
-app.post('/api/todlen/:branch/market-expenses', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { expenseDate, totalAmount } = req.body;
-        const marketTable = getBranchTable(branch, 'market_expenses');
-        await promiseDb.query(`INSERT INTO ${marketTable} (expense_date, total_amount) VALUES (?, ?)`, [expenseDate, totalAmount]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 💸 4. บันทึกเบิกย่อย
-app.post('/api/todlen/:branch/petty-expenses', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { expenseDate, expenseTime, title, totalAmount } = req.body;
-        const pettyTable = getBranchTable(branch, 'petty_expenses');
-        await promiseDb.query(`INSERT INTO ${pettyTable} (expense_date, expense_time, title, totalAmount) VALUES (?, ?, ?, ?)`, [expenseDate, expenseTime, title, totalAmount]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
 server.listen(PORT, () => {
     console.log(`เซิร์ฟเวอร์ทำงานเรียบร้อยที่ http://localhost:${PORT}`);
-});
-
-// ==========================================
-// 🍟 POS LIVE ONLINE DATABASE SYSTEM (เพิ่มใหม่)
-// ==========================================
-
-// 1. ดึงข้อมูลออเดอร์/ค่าตลาด/เบิกย่อย ประจำวันจาก Database
-app.get('/api/todlen/:branch/pos-records', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { date } = req.query;
-        const ordersTable = getBranchTable(branch, 'orders');
-        const marketTable = getBranchTable(branch, 'market_expenses');
-        const pettyTable = getBranchTable(branch, 'petty_expenses');
-
-        const [orders] = await promiseDb.query(`SELECT * FROM ${ordersTable} WHERE order_date = ? ORDER BY id DESC`, [date]);
-        const [market] = await promiseDb.query(`SELECT * FROM ${marketTable} WHERE expense_date = ? ORDER BY id DESC`, [date]);
-        const [petty] = await promiseDb.query(`SELECT * FROM ${pettyTable} WHERE expense_date = ? ORDER BY id DESC`, [date]);
-
-        res.json({ success: true, orders, market, petty });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 2. บันทึกออเดอร์ขายลง Database
-app.post('/api/todlen/:branch/orders', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { orderDate, orderTime, items, totalAmount } = req.body;
-        const table = getBranchTable(branch, 'orders');
-        await promiseDb.query(
-            `INSERT INTO ${table} (customer_name, order_date, order_time, order_items, total_amount) VALUES (?, ?, ?, ?, ?)`,
-            ['ลูกค้าหน้าร้าน', orderDate, orderTime, JSON.stringify(items || []), totalAmount]
-        );
-        res.json({ success: true, message: 'บันทึกออเดอร์ลง Database สำเร็จ' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 3. บันทึกค่าตลาดลง Database
-app.post('/api/todlen/:branch/market-expenses', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { expenseDate, totalAmount } = req.body;
-        const table = getBranchTable(branch, 'market_expenses');
-        await promiseDb.query(
-            `INSERT INTO ${table} (expense_date, total_amount) VALUES (?, ?)`,
-            [expenseDate, totalAmount]
-        );
-        res.json({ success: true, message: 'บันทึกค่าตลาดลง Database สำเร็จ' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 4. บันทึกค่าเบิกย่อยลง Database
-app.post('/api/todlen/:branch/petty-expenses', async (req, res) => {
-    try {
-        const { branch } = req.params;
-        const { expenseDate, expenseTime, title, totalAmount } = req.body;
-        const table = getBranchTable(branch, 'petty_expenses');
-        await promiseDb.query(
-            `INSERT INTO ${table} (expense_date, expense_time, title, total_amount) VALUES (?, ?, ?, ?)`,
-            [expenseDate, expenseTime, title, totalAmount]
-        );
-        res.json({ success: true, message: 'บันทึกเบิกย่อยลง Database สำเร็จ' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 5. ลบรายการออเดอร์/ค่าตลาด/เบิกย่อย ออกจาก Database
-app.delete('/api/todlen/:branch/pos-records/:type/:id', async (req, res) => {
-    try {
-        const { branch, type, id } = req.params;
-        let tableType = 'orders';
-        if (type === 'Market') tableType = 'market_expenses';
-        if (type === 'Expenses') tableType = 'petty_expenses';
-
-        const table = getBranchTable(branch, tableType);
-        await promiseDb.query(`DELETE FROM ${table} WHERE id = ?`, [id]);
-        res.json({ success: true, message: 'ลบรายการเรียบร้อย' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
 });
