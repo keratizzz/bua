@@ -9,85 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="xlsx.full.min.js"></script>
     <style>
-        /* =========================================
-           📱 รองรับหน้าจอมือถือและแท็บเล็ต (Responsive)
-           ========================================= */
-        @media screen and (max-width: 768px) {
-            /* 1. แถบบนสุด (เปลี่ยนจากซ้าย-ขวา เป็น บน-ล่าง) */
-            .pos-topbar {
-                flex-direction: column;
-                gap: 12px;
-                padding: 12px 15px;
-            }
-            .pos-topbar-actions {
-                width: 100%;
-                display: flex;
-            }
-            .nav-btn {
-                flex: 1;
-                justify-content: center;
-                font-size: 13px;
-                padding: 8px 5px;
-            }
-
-            /* 2. ส่วนหัว (ชื่อร้าน และปุ่ม Excel) */
-            .header {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 15px;
-                padding: 15px;
-            }
-            .header .flex-row {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-
-            /* 3. แถบ Tabs (ให้ห่อบรรทัดได้) */
-            .tabs {
-                flex-wrap: wrap;
-            }
-            .tab-btn {
-                flex: 1 1 45%;
-                font-size: 14px;
-                padding: 10px 5px;
-            }
-
-            /* 4. 🌟 จุดสำคัญ: หน้าขายอาหาร เปลี่ยนจาก 2 ฝั่ง เป็น บน-ล่าง */
-            .pos-grid {
-                grid-template-columns: 1fr;
-            }
-
-            /* 5. ฟอร์มไปตลาดและเบิกเงิน (บังคับเรียง บน-ล่าง) */
-            div[style*="grid-template-columns: 1fr 1fr"] {
-                grid-template-columns: 1fr !important;
-            }
-
-            /* 6. ปุ่มเมนูอาหาร (ย่อขนาดให้พอดีจอมือถือ) */
-            .menu-grid {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            }
-
-            /* 7. กล่อง Panel ต่างๆ (ให้เลื่อนซ้ายขวาได้ถ้าตารางล้น) */
-            .panel {
-                padding: 15px;
-                overflow-x: auto;
-            }
-
-            /* 8. หน้าสรุปยอด: การ์ด 4 ใบให้เหลือแถวละ 2 ใบ */
-            .dashboard-cards {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        /* 📱 สำหรับมือถือจอเล็กมาก (แนวตั้ง) */
-        @media screen and (max-width: 480px) {
-            .dashboard-cards {
-                grid-template-columns: 1fr;
-            }
-            .pos-topbar-actions {
-                flex-direction: column;
-            }
-        }
+       
         :root {
             --primary: #4361ee;
             --primary-hover: #3a53d0;
@@ -564,6 +486,61 @@
             display: flex;
             gap: 15px;
             align-items: center;
+        }
+                /* =========================================
+           📱 Responsive มือถือ (ต้องวางท้ายสุดของ <style>)
+           ========================================= */
+        @media screen and (max-width: 768px) {
+            html, body { overflow-x: hidden; }
+            .container { padding: 10px; }
+
+            /* แถบบนสุด */
+            .pos-topbar { flex-direction: column; gap: 10px; padding: 12px 15px; }
+            .pos-topbar-actions { width: 100%; gap: 8px; }
+            .nav-btn { flex: 1; justify-content: center; font-size: 13px; padding: 8px 5px; }
+
+            /* ส่วนหัว + ปุ่ม Excel */
+            .header { flex-direction: column; align-items: stretch; gap: 12px; padding: 15px; }
+            .header h1 { font-size: 20px; justify-content: center; text-align: center; }
+            .header .flex-row { flex-wrap: wrap; justify-content: center; }
+            .header input[type="file"] { max-width: 100%; }
+            .system-btn { white-space: nowrap; }
+
+            /* Tabs 3 ปุ่มเรียงแถวเดียว */
+            .tabs { gap: 5px; padding: 6px; }
+            .tab-btn { flex: 1 1 0; min-width: 0; font-size: 13px; padding: 10px 4px; }
+
+            /* หน้าขาย: บน-ล่าง และให้ช่องหดได้ */
+            .pos-grid { grid-template-columns: 1fr; }
+            .pos-grid > *,
+            div[style*="grid-template-columns: 1fr 1fr"] > * { min-width: 0; }
+            div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+            .menu-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+
+            /* Panel / ฟอร์ม */
+            .panel { padding: 15px; min-width: 0; overflow-x: auto; }
+            .panel input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+            .panel .system-btn { white-space: nowrap; }
+            input[type="date"], input[type="month"] { max-width: 100%; box-sizing: border-box; }
+
+            /* ตาราง */
+            th, td { padding: 8px 6px; font-size: 13px; }
+            th { text-transform: none; }
+            th[style*="width"] { width: auto !important; }
+            .total-box { font-size: 22px; }
+
+            /* Dashboard */
+            .dashboard-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .card { padding: 14px 8px; min-width: 0; }
+            .card h3 { font-size: 12px; text-transform: none; }
+            .card .amount { font-size: 20px; word-break: break-word; }
+            #dashboardTab .flex-row { flex-wrap: wrap; gap: 10px; }
+            #dailyFilter, #monthlyFilter, #rangeFilter { flex-wrap: wrap; }
+        }
+
+        @media screen and (max-width: 480px) {
+            .pos-topbar-actions { flex-direction: column; }
+            .tab-btn { font-size: 12px; }
         }
     </style>
 </head>
