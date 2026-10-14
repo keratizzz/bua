@@ -209,6 +209,8 @@
             } catch (err) { }
         }
 
+        let currentPartnersList = []; // เพิ่มตัวแปรเก็บรายการหุ้นส่วนปัจจุบัน
+
         async function loadPartnersAdmin() {
             const branch = document.getElementById('partnerBranchSelect').value;
             try {
@@ -221,16 +223,17 @@
                 const res = await fetch(`/api/todlen/${branch}/partners`);
                 const data = await res.json();
                 if (data.success) {
-                    document.getElementById('partnerTableBody').innerHTML = data.partners.map(p => `
-    <tr class="hover:bg-slate-50">
-        <td class="p-3 font-semibold text-slate-800">${p.name}</td>
-        <td class="p-3 text-right font-bold text-emerald-600">${p.share_percent}%</td>
-        <td class="p-3 text-center space-x-2">
-            <button onclick="editPartnerPrompt(${p.id}, '${p.name}', ${p.share_percent})" class="text-indigo-600 hover:underline text-xs font-semibold">แก้ไข</button>
-            <button onclick="deletePartner(${p.id}, '${p.name}')" class="text-rose-600 hover:underline text-xs font-semibold">ลบ</button>
-        </td>
-    </tr>
-`).join('');
+                    currentPartnersList = data.partners || []; // บันทึกรายชื่อหุ้นส่วนปัจจุบันไว้ใช้ตรวจสอบ %
+                    document.getElementById('partnerTableBody').innerHTML = currentPartnersList.map(p => `
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-3 font-semibold text-slate-800">${p.name}</td>
+                            <td class="p-3 text-right font-bold text-emerald-600">${p.share_percent}%</td>
+                            <td class="p-3 text-center space-x-2">
+                                <button onclick="editPartnerPrompt(${p.id}, '${p.name}', ${p.share_percent})" class="text-indigo-600 hover:underline text-xs font-semibold">แก้ไข</button>
+                                <button onclick="deletePartner(${p.id}, '${p.name}')" class="text-rose-600 hover:underline text-xs font-semibold">ลบ</button>
+                            </td>
+                        </tr>
+                    `).join('');
                 }
             } catch (err) { }
         }
@@ -323,6 +326,81 @@
             });
             const data = await res.json();
             if (data.success) { closeUserModal(); loadUsers(); } else alert(data.message);
+        }
+        // --- ระบบ Popup หุ้นส่วน + เช็คยอดรวมไม่เกิน 100% ---
+        function openPartnerModal(branch, id = '', name = '', percent = '') {
+            document.getElementById('partnerId').value = id;
+            document.getElementById('partnerBranch').value = branch;
+            document.getElementById('partnerName').value = name;
+            document.getElementById('partnerPercent').value = percent;
+            
+            document.getElementById('partnerModalTitle').innerText = id ? 'แก้ไขข้อมูลหุ้นส่วน' : 'เพิ่มหุ้นส่วนใหม่';
+            document.getElementById('partnerModal').classList.remove('hidden');
+        }
+
+        function closePartnerModal() {
+            document.getElementById('partnerModal').classList.add('hidden');
+        }
+
+        function addPartnerPrompt() {
+            const branch = document.getElementById('partnerBranchSelect').value;
+            openPartnerModal(branch);
+        }
+
+        function editPartnerPrompt(id, oldName, oldPercent) {
+            const branch = document.getElementById('partnerBranchSelect').value;
+            openPartnerModal(branch, id, oldName, oldPercent);
+        }
+
+        async function savePartner(e) {
+            e.preventDefault();
+            const id = document.getElementById('partnerId').value;
+            const branch = document.getElementById('partnerBranch').value;
+            const name = document.getElementById('partnerName').value.trim();
+            const inputPercent = parseFloat(document.getElementById('partnerPercent').value);
+
+            if (isNaN(inputPercent) || inputPercent <= 0) {
+                alert('กรุณากรอกสัดส่วนเปอร์เซ็นต์ให้ถูกต้อง (ต้องมากกว่า 0)');
+                return;
+            }
+
+            // 🔍 คำนวณเปอร์เซ็นต์รวมของหุ้นส่วนคนอื่นๆ
+            const otherPartnersTotal = currentPartnersList.reduce((sum, p) => {
+                if (id && String(p.id) === String(id)) {
+                    return sum; // ถ้าเป็นการแก้ไข ให้ข้ามเปอร์เซ็นต์เดิมของคนนี้ไปก่อน
+                }
+                return sum + parseFloat(p.share_percent || 0);
+            }, 0);
+
+            const newTotal = otherPartnersTotal + inputPercent;
+
+            // ⚠️ แจ้งเตือนหากรวมกันเกิน 100%
+            if (newTotal > 100) {
+                const remaining = (100 - otherPartnersTotal).toFixed(2);
+                alert(`เกิดข้อผิดพลาด: สัดส่วนหุ้นรวมกันเกิน 100%\n\nปัจจุบันมีอยู่แล้ว: ${otherPartnersTotal}%\nคุณใส่เพิ่ม: ${inputPercent}%\nรวมทั้งหมดเป็น: ${newTotal}%\n\n(สัดส่วนที่สามารถใส่ได้สูงสุดในขณะนี้คือ ${remaining > 0 ? remaining : 0}%)`);
+                return;
+            }
+
+            const url = id ? `/api/todlen/${branch}/partners/${id}` : `/api/todlen/${branch}/partners`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, share_percent: inputPercent })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    closePartnerModal();
+                    loadPartnersAdmin(); // โหลดตารางใหม่
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + data.message);
+                }
+            } catch (err) {
+                alert('ไม่สามารถบันทึกข้อมูลได้');
+            }
         }
 
         async function deleteUser(id, username) {
