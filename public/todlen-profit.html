@@ -95,7 +95,7 @@
                                 <div class="flex justify-between items-center mb-1">
                                     <label class="block text-sm font-medium text-slate-700">กำไรสุทธิวันนี้ (บาท)</label>
                                     <button type="button" onclick="autoFetchPosProfit()" class="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-1">
-                                        <i class="fa-solid fa-rotate"></i> ดึงยอดจาก POS
+                                        <i class="fa-solid fa-rotate"></i> ดึงยอดสดจาก POS
                                     </button>
                                 </div>
                                 <div class="relative">
@@ -202,8 +202,8 @@
             document.getElementById('filterPeriod').value = now.getDate() <= 15 ? "1" : "2";
 
             await loadBranchConfigAndPartners();
-            autoFetchPosProfit();
-            loadRecordsFromDatabase();
+            await autoFetchPosProfit();
+            await loadRecordsFromDatabase();
         };
 
         async function loadBranchConfigAndPartners() {
@@ -260,13 +260,14 @@
             `).join('');
         }
 
-        // 🔄 ดึงยอดกำไรสุทธิจาก MySQL Database ผ่าน API
+        // 🌐 ดึงยอดกำไรสุทธิจาก MySQL Database โดยตรง 100% (ไม่ใช้ localStorage)
         async function autoFetchPosProfit() {
             const date = document.getElementById('inputDate').value;
             if (!date) return;
             
+            document.getElementById('posCalcDetails').innerText = "กำลังดึงยอดขายสดจาก Database...";
+
             try {
-                // 1. ลองดึงตรงจาก API เซิร์ฟเวอร์
                 const res = await fetch(`/api/todlen/${currentBranch}/pos-net-profit?date=${date}`);
                 if (res.ok) {
                     const data = await res.json();
@@ -276,31 +277,10 @@
                         return;
                     }
                 }
-            } catch (apiErr) {
-                console.warn("ดึงยอด POS จาก API ไม่สำเร็จ สลับไปดึงจาก LocalStorage:", apiErr);
-            }
-
-            // 2. ระบบสำรอง: ดึงจาก LocalStorage ในเครื่อง
-            try {
-                const saved = localStorage.getItem('myPOS_DB');
-                if (saved) {
-                    const db = JSON.parse(saved);
-                    const targetOrders = db.Orders ? db.Orders.filter(o => o['วันที่'] === date) : [];
-                    const targetMarket = db.Market ? db.Market.filter(m => m['วันที่'] === date) : [];
-                    const targetExpenses = db.Expenses ? db.Expenses.filter(e => e['วันที่'] === date) : [];
-                    
-                    const totalSales = targetOrders.reduce((sum, o) => sum + (o['ยอดรวม'] || 0), 0);
-                    const totalMarket = targetMarket.reduce((sum, m) => sum + (m['ยอดรวม'] || 0), 0);
-                    const totalPetty = targetExpenses.reduce((sum, e) => sum + (e['ยอดรวม'] || 0), 0);
-                    const netProfit = totalSales - totalMarket - totalPetty;
-                    
-                    document.getElementById('inputProfit').value = netProfit;
-                    document.getElementById('posCalcDetails').innerText = `(สำรองในเครื่อง) ยอดขาย: ฿${totalSales.toLocaleString()} | รายจ่ายตลาด: ฿${totalMarket.toLocaleString()} | รายจ่ายย่อย: ฿${totalPetty.toLocaleString()}`;
-                } else {
-                    document.getElementById('posCalcDetails').innerText = "ไม่มีข้อมูล POS ถูกบันทึกไว้ในเครื่องนี้ (ยอดขาย: ฿0)";
-                }
+                document.getElementById('posCalcDetails').innerText = "ไม่พบยอดขายในระบบสำหรับวันนี้ (ยอดขาย: ฿0)";
             } catch (err) {
                 console.error("ดึงข้อมูล POS ล้มเหลว:", err);
+                document.getElementById('posCalcDetails').innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
             }
         }
         
@@ -384,8 +364,7 @@
                 const data = await res.json();
                 if (data.success) {
                     showToast(`บันทึกข้อมูลวันที่ ${dateStr} เรียบร้อย`);
-                    loadRecordsFromDatabase();
-                    document.getElementById('inputProfit').value = '';
+                    await loadRecordsFromDatabase();
                 } else { alert('เกิดข้อผิดพลาด: ' + data.message); }
             } catch (err) { alert('ไม่สามารถบันทึกข้อมูลได้'); }
         }
@@ -479,7 +458,7 @@
             try {
                 const res = await fetch(`/api/todlen/${currentBranch}/daily-profit-records/${id}`, { method: 'DELETE' });
                 const data = await res.json();
-                if (data.success) { showToast('ลบข้อมูลเรียบร้อย'); loadRecordsFromDatabase(); }
+                if (data.success) { showToast('ลบข้อมูลเรียบร้อย'); await loadRecordsFromDatabase(); }
             } catch (err) {}
         }
 
