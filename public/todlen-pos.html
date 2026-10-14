@@ -694,6 +694,25 @@
     </div>
 
     <script>
+        // 🛡️ ตรวจสอบสิทธิ์การเข้าถึงสาขา
+(function checkBranchAccess() {
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const urlBranch = window.location.pathname.split('/')[2]; // ดึงชื่อสาขาจาก URL (korat หรือ buriram)
+
+    // 1. ถ้ายังไม่ได้ล็อกอิน ให้เด้งกลับไปหน้า Login
+    if (!user.role) {
+        alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
+        window.location.href = '/todlen/login';
+        return;
+    }
+
+    // 2. ถ้าไม่ใช่ Admin และพยายามเข้าสาขาที่ไม่ใช่ของตัวเอง
+    if (user.role !== 'admin' && user.branch !== urlBranch) {
+        alert(`คุณไม่มีสิทธิ์เข้าถึงสาขา ${urlBranch === 'korat' ? 'โคราช' : 'บุรีรัมย์'}`);
+        // ส่งกลับไปยังสาขาจริงของตัวเอง
+        window.location.href = `/todlen/${user.branch}/profit`;
+    }
+})();
         // --- โครงสร้างฐานข้อมูล ---
         let db = { Menu: [], Orders: [], Market: [], Expenses: [] };
         let cart = [];

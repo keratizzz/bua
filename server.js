@@ -15,7 +15,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
 // 🗄️ DATABASE CONNECTION POOL
-// (รองรับทั้งตัวแปร DB_* และ MYSQL_ADDON_*)
 // ==========================================
 const db = mysql.createPool({
     host: process.env.DB_HOST || process.env.MYSQL_ADDON_HOST || 'b7ugjqxplhd9vdliphnu-mysql.services.clever-cloud.com',
@@ -28,7 +27,6 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-// Promise wrapper สำหรับระบบทอดเล่น
 const promiseDb = db.promise();
 
 function getBranchTable(branch, tableType) {
@@ -38,7 +36,7 @@ function getBranchTable(branch, tableType) {
 }
 
 // ==========================================
-// 🌐 PAGE ROUTES (ระบบเดิม + ระบบทอดเล่น)
+// 🌐 PAGE ROUTES
 // ==========================================
 
 // --- ระบบเดิม (แจ่วฮ้อน) ---
@@ -73,10 +71,10 @@ app.get('/todlen/:branch/profit', (req, res) => {
 
 
 // ==========================================
-// 🍟 API SYSTEM #2: ระบบทอดเล่น (Todlen System)
+// 🍟 TODLEN API SYSTEM (ระบบทอดเล่น)
 // ==========================================
 
-// 1. API เข้าสู่ระบบกลาง
+// 1. เข้าสู่ระบบกลาง
 app.post('/api/todlen/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -94,7 +92,7 @@ app.post('/api/todlen/login', async (req, res) => {
     }
 });
 
-// 2. API ตรวจสอบออเดอร์ซ้ำจากชื่อลูกค้า / เพจ Facebook
+// 2. เช็คออเดอร์ซ้ำจากชื่อลูกค้า
 app.get('/api/todlen/:branch/check-duplicate-customer', async (req, res) => {
     try {
         const { branch } = req.params;
@@ -112,7 +110,7 @@ app.get('/api/todlen/:branch/check-duplicate-customer', async (req, res) => {
     }
 });
 
-// 3. API ดึงยอดกำไรสุทธิจาก POS อัตโนมัติส่งให้หน้าระบบส่วนแบ่ง
+// 3. คำนวณกำไรสุทธิจาก POS
 app.get('/api/todlen/:branch/pos-net-profit', async (req, res) => {
     try {
         const { branch } = req.params;
@@ -137,57 +135,207 @@ app.get('/api/todlen/:branch/pos-net-profit', async (req, res) => {
     }
 });
 
-// 4. API บันทึกส่วนแบ่งกำไร (สูตรบุรีรัมย์ 40%/40% + 20% โยนเข้าทุนโคราช)
+// 4. บันทึกส่วนแบ่งกำไร (บันทึกครบถ้วนทั้ง payouts, attendances และ shopFund)
 app.post('/api/todlen/:branch/save-daily-profit', async (req, res) => {
-    const connection = await promiseDb.getConnection();
     try {
-        await connection.beginTransaction();
         const { branch } = req.params;
-        const { recordDate, posNetProfit, finalProfit } = req.body;
+        const { recordDate, posNetProfit, finalProfit, shopFund, payouts, attendances } = req.body;
+        const profitTable = getBranchTable(branch, 'daily_profit_records');
 
-        let shopFund = 0;
-        let koratBonusFund = 0;
+        const payoutsJson = JSON.stringify(payouts || {});
+        const attendancesJson = JSON.stringify(attendances || {});
 
-        if (branch === 'buriram') {
-            if (finalProfit > 0) {
-                koratBonusFund = finalProfit * 0.20; // 20% บุรีรัมย์เข้าทุนโคราช
-            } else {
-                koratBonusFund = finalProfit;
-            }
-        } else {
-            shopFund = finalProfit > 0 ? finalProfit * 0.30 : finalProfit;
-        }
-
-        const profitTable = `${branch}_daily_profit_records`;
-        await connection.query(
-            `INSERT INTO ${profitTable} (record_date, pos_net_profit, final_profit, shop_fund) 
-             VALUES (?, ?, ?, ?) 
-             ON DUPLICATE KEY UPDATE pos_net_profit=?, final_profit=?, shop_fund=?`,
-            [recordDate, posNetProfit, finalProfit, shopFund, posNetProfit, finalProfit, shopFund]
+        await promiseDb.query(
+            `INSERT INTO ${profitTable} (record_date, pos_net_profit, final_profit, shop_fund, payouts, attendances) 
+             VALUES (?, ?, ?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE pos_net_profit=?, final_profit=?, shop_fund=?, payouts=?, attendances=?`,
+            [
+                recordDate, posNetProfit, finalProfit, shopFund, payoutsJson, attendancesJson,
+                posNetProfit, finalProfit, shopFund, payoutsJson, attendancesJson
+            ]
         );
 
-        if (branch === 'buriram' && koratBonusFund !== 0) {
-            await connection.query(
-                `INSERT INTO korat_daily_profit_records (record_date, pos_net_profit, final_profit, shop_fund)
-                 VALUES (?, 0, 0, ?)
-                 ON DUPLICATE KEY UPDATE shop_fund = shop_fund + ?`,
-                [recordDate, koratBonusFund, koratBonusFund]
-            );
-        }
-
-        await connection.commit();
         res.json({ success: true, message: 'บันทึกส่วนแบ่งกำไรเรียบร้อยแล้ว' });
     } catch (err) {
-        await connection.rollback();
         res.status(500).json({ success: false, message: err.message });
-    } finally {
-        connection.release();
+    }
+});
+
+// 5. ดึงประวัติส่วนแบ่งกำไร
+app.get('/api/todlen/:branch/daily-profit-records', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const profitTable = getBranchTable(branch, 'daily_profit_records');
+        const [rows] = await promiseDb.query(`SELECT * FROM ${profitTable} ORDER BY record_date ASC`);
+        res.json({ success: true, records: rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 6. ลบประวัติส่วนแบ่งกำไรตาม ID
+app.delete('/api/todlen/:branch/daily-profit-records/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const profitTable = getBranchTable(branch, 'daily_profit_records');
+        await promiseDb.query(`DELETE FROM ${profitTable} WHERE id = ?`, [id]);
+        res.json({ success: true, message: 'ลบรายการเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 7. จัดการผู้ใช้งาน (Admin)
+app.get('/api/todlen/users', async (req, res) => {
+    try {
+        const [users] = await promiseDb.query('SELECT id, name, username, role, branch, created_at FROM todlen_users ORDER BY id DESC');
+        res.json({ success: true, users });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/todlen/users', async (req, res) => {
+    try {
+        const { name, username, password, role, branch } = req.body;
+        if (!name || !username || !password || !role) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+        }
+        const [result] = await promiseDb.query(
+            'INSERT INTO todlen_users (name, username, password_hash, role, branch) VALUES (?, ?, ?, ?, ?)',
+            [name, username, password, role, branch || null]
+        );
+        res.json({ success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว', userId: result.insertId });
+    } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ success: false, message: 'Username นี้ถูกใช้งานแล้วในระบบ' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/todlen/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, username, password, role, branch } = req.body;
+
+        let sql = 'UPDATE todlen_users SET name = ?, username = ?, role = ?, branch = ?';
+        let params = [name, username, role, branch || null];
+
+        if (password && password.trim() !== '') {
+            sql += ', password_hash = ?';
+            params.push(password);
+        }
+
+        sql += ' WHERE id = ?';
+        params.push(id);
+
+        await promiseDb.query(sql, params);
+        res.json({ success: true, message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/api/todlen/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await promiseDb.query('DELETE FROM todlen_users WHERE id = ?', [id]);
+        res.json({ success: true, message: 'ลบผู้ใช้งานเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 8. จัดการหุ้นส่วน (Partners)
+app.get('/api/todlen/:branch/partners', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const partnerTable = getBranchTable(branch, 'partners');
+        const [partners] = await promiseDb.query(`SELECT * FROM ${partnerTable} ORDER BY id ASC`);
+        res.json({ success: true, partners });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/todlen/:branch/partners', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { partner_name, share_percentage } = req.body;
+        const partnerTable = getBranchTable(branch, 'partners');
+
+        const [result] = await promiseDb.query(
+            `INSERT INTO ${partnerTable} (partner_name, share_percentage) VALUES (?, ?)`,
+            [partner_name, share_percentage]
+        );
+        res.json({ success: true, message: 'เพิ่มหุ้นส่วนเรียบร้อยแล้ว', partnerId: result.insertId });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/todlen/:branch/partners/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const { partner_name, share_percentage } = req.body;
+        const partnerTable = getBranchTable(branch, 'partners');
+
+        await promiseDb.query(
+            `UPDATE ${partnerTable} SET partner_name = ?, share_percentage = ? WHERE id = ?`,
+            [partner_name, share_percentage, id]
+        );
+        res.json({ success: true, message: 'อัปเดตข้อมูลหุ้นส่วนเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/api/todlen/:branch/partners/:id', async (req, res) => {
+    try {
+        const { branch, id } = req.params;
+        const partnerTable = getBranchTable(branch, 'partners');
+        await promiseDb.query(`DELETE FROM ${partnerTable} WHERE id = ?`, [id]);
+        res.json({ success: true, message: 'ลบรายชื่อหุ้นส่วนเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 9. ตั้งค่า % ทุนร้าน
+app.get('/api/todlen/:branch/config', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const [rows] = await promiseDb.query(
+            "SELECT setting_value FROM system_settings WHERE setting_key = ?", 
+            [`${branch}_shop_fund_percent`]
+        );
+        const shopFundPercent = rows.length > 0 ? parseFloat(rows[0].setting_value) : (branch === 'buriram' ? 20 : 30);
+        res.json({ success: true, shopFundPercent });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/todlen/:branch/config', async (req, res) => {
+    try {
+        const { branch } = req.params;
+        const { shopFundPercent } = req.body;
+        await promiseDb.query(
+            `INSERT INTO system_settings (setting_key, setting_value) 
+             VALUES (?, ?) 
+             ON DUPLICATE KEY UPDATE setting_value = ?`,
+            [`${branch}_shop_fund_percent`, shopFundPercent.toString(), shopFundPercent.toString()]
+        );
+        res.json({ success: true, message: 'อัปเดต % หักเข้าทุนร้านเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
 
 // ==========================================
-// 🔌 SOCKET.IO REAL-TIME SYSTEM (ระบบเดิม)
+// 🔌 SOCKET.IO REAL-TIME SYSTEM (แจ่วฮ้อน)
 // ==========================================
 io.on('connection', (socket) => {
     socket.on('get_bill_details', (tableNum) => {
@@ -224,7 +372,7 @@ function notifyActiveTables() {
 
 
 // ==========================================
-// 🍲 API SYSTEM #1: ระบบสั่งอาหารเดิม (แจ่วฮ้อน)
+// 🍲 JAEW HON API SYSTEM (ระบบเดิม)
 // ==========================================
 
 app.get('/api/orders/pending', (req, res) => {
@@ -607,76 +755,10 @@ app.post('/api/orders/batch', (req, res) => {
         });
     });
 });
+
+
 // ==========================================
-// 👥 API SYSTEM: จัดการผู้ใช้งาน (สำหรับ Admin)
-// ==========================================
-
-// 1. ดึงรายชื่อผู้ใช้ทั้งหมด
-app.get('/api/todlen/users', async (req, res) => {
-    try {
-        const [users] = await promiseDb.query('SELECT id, name, username, role, branch, created_at FROM todlen_users ORDER BY id DESC');
-        res.json({ success: true, users });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 2. เพิ่มผู้ใช้งานใหม่
-app.post('/api/todlen/users', async (req, res) => {
-    try {
-        const { name, username, password, role, branch } = req.body;
-        if (!name || !username || !password || !role) {
-            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
-        }
-        const [result] = await promiseDb.query(
-            'INSERT INTO todlen_users (name, username, password_hash, role, branch) VALUES (?, ?, ?, ?, ?)',
-            [name, username, password, role, branch || null]
-        );
-        res.json({ success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว', userId: result.insertId });
-    } catch (err) {
-        if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ success: false, message: 'Username นี้ถูกใช้งานแล้วในระบบ' });
-        }
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 3. แก้ไขข้อมูลผู้ใช้งาน
-app.put('/api/todlen/users/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, username, password, role, branch } = req.body;
-
-        let sql = 'UPDATE todlen_users SET name = ?, username = ?, role = ?, branch = ?';
-        let params = [name, username, role, branch || null];
-
-        if (password && password.trim() !== '') {
-            sql += ', password_hash = ?';
-            params.push(password);
-        }
-
-        sql += ' WHERE id = ?';
-        params.push(id);
-
-        await promiseDb.query(sql, params);
-        res.json({ success: true, message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จ' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// 4. ลบผู้ใช้งาน
-app.delete('/api/todlen/users/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await promiseDb.query('DELETE FROM todlen_users WHERE id = ?', [id]);
-        res.json({ success: true, message: 'ลบผู้ใช้งานเรียบร้อยแล้ว' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-// ==========================================
-// 🚀 START SERVER
+// 🚀 START SERVER (อยู่ที่บรรทัดสุดท้ายเสมอ)
 // ==========================================
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
