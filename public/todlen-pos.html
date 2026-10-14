@@ -5,11 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ทอดเล่น-ไหม้ทอดทิ้ง-30กันยา</title>
-    <!-- โหลดฟอนต์ Prompt จาก Google Fonts ให้ดูสวยและทันสมัย -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="xlsx.full.min.js"></script>
     <style>
-       
         :root {
             --primary: #4361ee;
             --primary-hover: #3a53d0;
@@ -36,7 +34,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -61,14 +59,6 @@
             gap: 10px;
         }
 
-        .container {
-            max-width: 1400px;
-            /* <--- เปลี่ยนค่าตรงนี้จาก 1200px เป็น 1400px หรือกว้างกว่านี้ตามต้องการ */
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* Tabs */
         .tabs {
             display: flex;
             gap: 10px;
@@ -93,39 +83,17 @@
             transition: all 0.3s ease;
         }
 
-        .tab-btn:hover {
-            background-color: var(--light);
-            color: var(--dark);
-        }
+        .tab-btn:hover { background-color: var(--light); color: var(--dark); }
+        .tab-btn.active { background-color: var(--primary); color: var(--white); box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3); }
 
-        .tab-btn.active {
-            background-color: var(--primary);
-            color: var(--white);
-            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Grid */
         .pos-grid {
             display: grid;
             grid-template-columns: 1.8fr 1.2fr;
@@ -149,7 +117,6 @@
             margin-bottom: 20px;
         }
 
-        /* Menu Buttons */
         .menu-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -183,16 +150,8 @@
             font-size: 13px;
         }
 
-        .menu-btn:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
-        }
+        .menu-btn:hover { transform: translateY(-4px); box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4); }
 
-        .menu-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Tables */
         table {
             width: 100%;
             border-collapse: separate;
@@ -203,30 +162,10 @@
             border: 1px solid var(--border);
         }
 
-        th,
-        td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background-color: var(--light); color: #4b5563; font-weight: 600; font-size: 14px; text-transform: uppercase; }
+        .text-right { text-align: right; }
 
-        th {
-            background-color: var(--light);
-            color: #4b5563;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        /* Buttons */
         .delete-btn {
             background-color: #fee2e2;
             color: var(--danger);
@@ -239,10 +178,7 @@
             font-family: 'Prompt';
         }
 
-        .delete-btn:hover {
-            background-color: var(--danger);
-            color: white;
-        }
+        .delete-btn:hover { background-color: var(--danger); color: white; }
 
         .total-box {
             font-size: 26px;
@@ -271,24 +207,8 @@
             font-family: 'Prompt';
         }
 
-        .checkout-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #4b5563;
-            font-size: 14px;
-        }
-
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #4b5563; font-size: 14px; }
         .form-group input {
             width: 100%;
             padding: 10px 15px;
@@ -297,15 +217,7 @@
             border-radius: 8px;
             font-size: 15px;
             font-family: 'Prompt';
-            transition: 0.2s;
             background: #f9fafb;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
         }
 
         .btn-submit {
@@ -317,15 +229,8 @@
             cursor: pointer;
             font-size: 15px;
             font-weight: 600;
-            transition: 0.2s;
             font-family: 'Prompt';
             width: 100%;
-            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.2);
-        }
-
-        .btn-submit:hover {
-            background-color: var(--warning-hover);
-            transform: translateY(-2px);
         }
 
         .system-btn {
@@ -337,31 +242,14 @@
             border-radius: 8px;
             font-weight: 500;
             font-family: 'Prompt';
-            transition: 0.2s;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .system-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
-        }
+        .btn-upload { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .btn-save { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-        .btn-upload {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-
-        .btn-save {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .btn-filter {
-            background-color: var(--dark);
-            padding: 8px 20px;
-        }
-
-        /* Dashboard Cards */
         .dashboard-cards {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -380,42 +268,14 @@
             overflow: hidden;
         }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-        }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+        .card-sales::before { background: var(--success); }
+        .card-market::before { background: var(--danger); }
+        .card-expense::before { background: var(--warning); }
+        .card-net::before { background: var(--primary); }
 
-        .card-sales::before {
-            background: var(--success);
-        }
+        .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; }
 
-        .card-market::before {
-            background: var(--danger);
-        }
-
-        .card-expense::before {
-            background: var(--warning);
-        }
-
-        .card-net::before {
-            background: var(--primary);
-        }
-
-        .card h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #6b7280;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        /* =========================================
-           สไตล์สำหรับแถบเมนูด้านบน ให้เข้ากับหน้า POS 
-           ========================================= */
         .pos-topbar {
             background: linear-gradient(135deg, var(--primary), #3b82f6);
             color: white;
@@ -426,18 +286,8 @@
             box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
         }
 
-        .pos-topbar-logo {
-            font-size: 18px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            letter-spacing: 0.5px;
-        }
-
-        .pos-topbar-actions {
-            display: flex;
-            gap: 12px;
-        }
+        .pos-topbar-logo { font-size: 18px; font-weight: 600; display: flex; align-items: center; }
+        .pos-topbar-actions { display: flex; gap: 12px; }
 
         .nav-btn {
             padding: 8px 16px;
@@ -447,117 +297,48 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .nav-btn-profit {
-            background-color: var(--success);
-            color: white;
-            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
-        }
+        .nav-btn-profit { background-color: var(--success); color: white; }
+        .nav-btn-exit { background-color: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.2); }
+        .card .amount { font-size: 28px; font-weight: 600; }
+        .flex-row { display: flex; gap: 15px; align-items: center; }
 
-        .nav-btn-profit:hover {
-            background-color: var(--success-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
-        }
-
-        .nav-btn-exit {
-            background-color: rgba(255, 255, 255, 0.15);
-            color: white;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .nav-btn-exit:hover {
-            background-color: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-        }
-
-        .card .amount {
-            font-size: 28px;
-            font-weight: 600;
-        }
-
-        .flex-row {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-                /* =========================================
-           📱 Responsive มือถือ (ต้องวางท้ายสุดของ <style>)
-           ========================================= */
         @media screen and (max-width: 768px) {
             html, body { overflow-x: hidden; }
             .container { padding: 10px; }
-
-            /* แถบบนสุด */
             .pos-topbar { flex-direction: column; gap: 10px; padding: 12px 15px; }
             .pos-topbar-actions { width: 100%; gap: 8px; }
             .nav-btn { flex: 1; justify-content: center; font-size: 13px; padding: 8px 5px; }
-
-            /* ส่วนหัว + ปุ่ม Excel */
             .header { flex-direction: column; align-items: stretch; gap: 12px; padding: 15px; }
             .header h1 { font-size: 20px; justify-content: center; text-align: center; }
             .header .flex-row { flex-wrap: wrap; justify-content: center; }
-            .header input[type="file"] { max-width: 100%; }
-            .system-btn { white-space: nowrap; }
-
-            /* Tabs 3 ปุ่มเรียงแถวเดียว */
             .tabs { gap: 5px; padding: 6px; }
             .tab-btn { flex: 1 1 0; min-width: 0; font-size: 13px; padding: 10px 4px; }
-
-            /* หน้าขาย: บน-ล่าง และให้ช่องหดได้ */
             .pos-grid { grid-template-columns: 1fr; }
-            .pos-grid > *,
-            div[style*="grid-template-columns: 1fr 1fr"] > * { min-width: 0; }
+            .pos-grid > *, div[style*="grid-template-columns: 1fr 1fr"] > * { min-width: 0; }
             div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
             .menu-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
-
-            /* Panel / ฟอร์ม */
             .panel { padding: 15px; min-width: 0; overflow-x: auto; }
-            .panel input { min-width: 0; max-width: 100%; box-sizing: border-box; }
-            .panel .system-btn { white-space: nowrap; }
-            input[type="date"], input[type="month"] { max-width: 100%; box-sizing: border-box; }
-
-            /* ตาราง */
             th, td { padding: 8px 6px; font-size: 13px; }
-            th { text-transform: none; }
-            th[style*="width"] { width: auto !important; }
             .total-box { font-size: 22px; }
-
-            /* Dashboard */
             .dashboard-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
             .card { padding: 14px 8px; min-width: 0; }
-            .card h3 { font-size: 12px; text-transform: none; }
             .card .amount { font-size: 20px; word-break: break-word; }
             #dashboardTab .flex-row { flex-wrap: wrap; gap: 10px; }
-            #dailyFilter, #monthlyFilter, #rangeFilter { flex-wrap: wrap; }
-        }
-
-        @media screen and (max-width: 480px) {
-            .pos-topbar-actions { flex-direction: column; }
-            .tab-btn { font-size: 12px; }
         }
     </style>
 </head>
 
 <body>
-    <!-- แถบเมนูด้านบนสุด (Custom Design) -->
     <div class="pos-topbar">
-        <div class="pos-topbar-logo">
-            🍟 ร้านทอดเล่น (POS)
-        </div>
+        <div class="pos-topbar-logo">🍟 ร้านทอดเล่น (POS)</div>
         <div class="pos-topbar-actions">
-            <button onclick="switchToProfit()" class="nav-btn nav-btn-profit">
-                📊 สลับไประบบส่วนแบ่งกำไร
-            </button>
-            <button onclick="goToAdminOrLogout()" class="nav-btn nav-btn-exit">
-                🏠 กลับหน้าหลัก / ออก
-            </button>
+            <button onclick="switchToProfit()" class="nav-btn nav-btn-profit">📊 สลับไประบบส่วนแบ่งกำไร</button>
+            <button onclick="goToAdminOrLogout()" class="nav-btn nav-btn-exit">🏠 กลับหน้าหลัก / ออก</button>
         </div>
     </div>
 
@@ -579,8 +360,8 @@
             }
         }
     </script>
+
     <div class="container">
-        <!-- ส่วนหัว -->
         <div class="header">
             <h1>ทอดเล่น-ไหม้ทอดทิ้ง</h1>
             <div class="flex-row">
@@ -590,45 +371,34 @@
             </div>
         </div>
 
-        <!-- แถบนำทาง (Tabs) -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('posTab')">🛒 หน้าขายอาหาร</button>
             <button class="tab-btn" onclick="switchTab('dashboardTab')">📊 สรุปยอด (Dashboard)</button>
             <button class="tab-btn" onclick="switchTab('menuManageTab')">⚙️ จัดการเมนู</button>
         </div>
 
-        <!-- 1. หน้าจอขาย (POS) -->
+        <!-- 1. หน้าขาย (POS) -->
         <div id="posTab" class="tab-content active">
             <div class="pos-grid">
-                <!-- ฝั่งซ้าย: เมนูอาหาร -->
                 <div class="panel">
                     <h2>เมนูอาหารทั้งหมด</h2>
-                    <div id="menuContainer" class="menu-grid">
-                        <!-- ปุ่มเมนูจะถูกสร้างอัตโนมัติที่นี่ -->
-                    </div>
+                    <div id="menuContainer" class="menu-grid"></div>
                 </div>
 
-                <!-- ฝั่งขวา: ตะกร้าและฟอร์มเบิก -->
                 <div>
-                    <div class="panel"
-                        style="margin-bottom: 20px; background: #f0f9ff; border-color: #bae6fd; padding: 15px 24px;">
+                    <div class="panel" style="margin-bottom: 20px; background: #f0f9ff; border-color: #bae6fd; padding: 15px 24px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 style="margin: 0; border: none; color: #0369a1; font-size: 16px;">🗓️
-                                วันที่บันทึกรายการ:</h2>
-                            <input type="date" id="posDate"
-                                style="padding: 8px 15px; border-radius: 8px; border: 1px solid #7dd3fc; font-family:'Prompt'; font-size: 15px; outline: none; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; color: var(--dark);">
+                            <h2 style="margin: 0; border: none; color: #0369a1; font-size: 16px;">🗓️ วันที่บันทึกรายการ:</h2>
+                            <input type="date" id="posDate" style="padding: 8px 15px; border-radius: 8px; border: 1px solid #7dd3fc; font-family:'Prompt'; font-size: 15px; outline: none; background: white; cursor: pointer;">
                         </div>
                     </div>
 
                     <div class="panel" style="margin-bottom: 20px;">
                         <h2>📝 ออเดอร์ปัจจุบัน</h2>
                         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <input type="text" id="customItemName" placeholder="ชื่อเมนู"
-                                style="flex: 2; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
-                            <input type="number" id="customItemPrice" placeholder="ราคา"
-                                style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
-                            <button class="system-btn btn-save" onclick="addCustomToCart()"
-                                style="min-height: unset; padding: 8px 15px;">+ เพิ่ม</button>
+                            <input type="text" id="customItemName" placeholder="ชื่อเมนู" style="flex: 2; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
+                            <input type="number" id="customItemPrice" placeholder="ราคา" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #d1d5db; font-family: 'Prompt';">
+                            <button class="system-btn btn-save" onclick="addCustomToCart()" style="min-height: unset; padding: 8px 15px;">+ เพิ่ม</button>
                         </div>
                         <table>
                             <thead>
@@ -639,15 +409,12 @@
                                     <th style="text-align: center; width: 40px;">ลบ</th>
                                 </tr>
                             </thead>
-                            <tbody id="cartBody">
-                                <!-- สินค้าในตะกร้า -->
-                            </tbody>
+                            <tbody id="cartBody"></tbody>
                         </table>
                         <div class="total-box">ยอดรวม: <span id="cartTotal">0</span> บาท</div>
                         <button class="checkout-btn" onclick="checkout()">บันทึกออเดอร์</button>
                     </div>
 
-                    <!-- ฟอร์มไปตลาด และ เบิกเงิน -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div class="panel" style="background: #fff1f2; border-color: #fecdd3;">
                             <h2 style="font-size: 16px; color: #be123c;">🛒 บันทึกยอดไปตลาด</h2>
@@ -655,8 +422,7 @@
                                 <label>ยอดรวมที่ซื้อของ (บาท)</label>
                                 <input type="number" id="marketCost" placeholder="เช่น 500">
                             </div>
-                            <button class="btn-submit" style="background: #e11d48;"
-                                onclick="addMarketCost()">บันทึกค่าตลาด</button>
+                            <button class="btn-submit" style="background: #e11d48;" onclick="addMarketCost()">บันทึกค่าตลาด</button>
                         </div>
 
                         <div class="panel" style="background: #fffbeb; border-color: #fde68a;">
@@ -676,47 +442,31 @@
             </div>
         </div>
 
-        <!-- 2. หน้าสรุปยอด (Dashboard) -->
+        <!-- 2. Dashboard -->
         <div id="dashboardTab" class="tab-content">
             <div class="panel">
-                <div class="flex-row"
-                    style="margin-bottom: 25px; background: #f8fafc; padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); justify-content: space-between;">
-
+                <div class="flex-row" style="margin-bottom: 25px; background: #f8fafc; padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); justify-content: space-between;">
                     <div style="display: flex; gap: 5px; background: #e5e7eb; padding: 4px; border-radius: 10px;">
-                        <button id="btnDaily" class="system-btn"
-                            style="background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"
-                            onclick="setDashMode('daily')">📅 วัน</button>
-                        <button id="btnMonthly" class="system-btn"
-                            style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px; box-shadow: none;"
-                            onclick="setDashMode('monthly')">📊 เดือน</button>
-                        <button id="btnRange" class="system-btn"
-                            style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px; box-shadow: none;"
-                            onclick="setDashMode('range')">🗓️ ช่วงเวลา</button>
+                        <button id="btnDaily" class="system-btn" style="background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px;" onclick="setDashMode('daily')">📅 วัน</button>
+                        <button id="btnMonthly" class="system-btn" style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px;" onclick="setDashMode('monthly')">📊 เดือน</button>
+                        <button id="btnRange" class="system-btn" style="background: transparent; color: #4b5563; padding: 8px 15px; border-radius: 8px;" onclick="setDashMode('range')">🗓️ ช่วงเวลา</button>
                     </div>
 
                     <div id="dailyFilter" style="display: flex; gap: 10px; align-items: center;">
                         <span style="font-weight: 500; color: #4b5563;">เลือกวัน:</span>
-                        <input type="date" id="filterDate"
-                            style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
-                            onchange="updateDashboard()">
+                        <input type="date" id="filterDate" style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
                     </div>
 
                     <div id="monthlyFilter" style="display: none; gap: 10px; align-items: center;">
                         <span style="font-weight: 500; color: #4b5563;">เลือกเดือน:</span>
-                        <input type="month" id="filterMonth"
-                            style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
-                            onchange="updateDashboard()">
+                        <input type="month" id="filterMonth" style="padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
                     </div>
 
                     <div id="rangeFilter" style="display: none; gap: 10px; align-items: center;">
                         <span style="font-weight: 500; color: #4b5563;">ตั้งแต่:</span>
-                        <input type="date" id="filterStartDate"
-                            style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
-                            onchange="updateDashboard()">
+                        <input type="date" id="filterStartDate" style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
                         <span style="font-weight: 500; color: #4b5563;">ถึง:</span>
-                        <input type="date" id="filterEndDate"
-                            style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';"
-                            onchange="updateDashboard()">
+                        <input type="date" id="filterEndDate" style="padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; font-family:'Prompt';" onchange="updateDashboard()">
                     </div>
                 </div>
 
@@ -739,9 +489,7 @@
                     </div>
                 </div>
 
-                <h3 id="dashOrderTitle"
-                    style="color: var(--dark); margin-top: 30px; border-bottom: 2px solid var(--light); padding-bottom: 10px;">
-                    📋 รายการออเดอร์</h3>
+                <h3 id="dashOrderTitle" style="color: var(--dark); margin-top: 30px; border-bottom: 2px solid var(--light); padding-bottom: 10px;">📋 รายการออเดอร์</h3>
                 <table>
                     <thead>
                         <tr>
@@ -786,7 +534,7 @@
             </div>
         </div>
 
-        <!-- 3. หน้าจัดการเมนูอาหาร -->
+        <!-- 3. จัดการเมนู -->
         <div id="menuManageTab" class="tab-content">
             <div class="panel" style="max-width: 600px; margin: 0 auto;">
                 <h2>➕ เพิ่มเมนูใหม่</h2>
@@ -799,8 +547,7 @@
                         <label>ราคา (บาท)</label>
                         <input type="number" id="newMenuPrice" placeholder="40">
                     </div>
-                    <button class="btn-submit" onclick="addNewMenu()"
-                        style="flex: 1; background-color: var(--success); height: 44px;">บันทึกเมนู</button>
+                    <button class="btn-submit" onclick="addNewMenu()" style="flex: 1; background-color: var(--success); height: 44px;">บันทึกเมนู</button>
                 </div>
 
                 <h2 style="margin-top: 40px;">📋 รายการเมนูในระบบ</h2>
@@ -816,34 +563,28 @@
                 </table>
             </div>
         </div>
-
     </div>
 
     <script>
-        // 🛡️ ตรวจสอบสิทธิ์การเข้าถึงสาขา
         (function checkBranchAccess() {
             const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-            const urlBranch = window.location.pathname.split('/')[2]; // ดึงชื่อสาขาจาก URL (korat หรือ buriram)
+            const urlBranch = window.location.pathname.split('/')[2];
 
-            // 1. ถ้ายังไม่ได้ล็อกอิน ให้เด้งกลับไปหน้า Login
             if (!user.role) {
                 alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
                 window.location.href = '/todlen/login';
                 return;
             }
 
-            // 2. ถ้าไม่ใช่ Admin และพยายามเข้าสาขาที่ไม่ใช่ของตัวเอง
             if (user.role !== 'admin' && user.branch !== urlBranch) {
                 alert(`คุณไม่มีสิทธิ์เข้าถึงสาขา ${urlBranch === 'korat' ? 'โคราช' : 'บุรีรัมย์'}`);
-                // ส่งกลับไปยังสาขาจริงของตัวเอง
                 window.location.href = `/todlen/${user.branch}/profit`;
             }
         })();
-        // --- โครงสร้างฐานข้อมูล ---
+
         let db = { Menu: [], Orders: [], Market: [], Expenses: [] };
         let cart = [];
 
-        // --- ระบบ AUTO-SAVE (บันทึกลง Chrome อัตโนมัติ) ---
         function saveToLocal() {
             localStorage.setItem('myPOS_DB', JSON.stringify(db));
         }
@@ -852,18 +593,30 @@
             const saved = localStorage.getItem('myPOS_DB');
             if (saved) {
                 db = JSON.parse(saved);
-            } else {
-                // ถ้าเข้ามาครั้งแรกสุดๆ จะให้มีเมนูตัวอย่าง
-                db.Menu = [
-                    { "ชื่อเมนู": "มาม่าเกาหลี", "ราคา": 50 },
-                    { "ชื่อเมนู": "เฟรนฟราย", "ราคา": 39 }
-                ];
-                saveToLocal();
             }
         }
 
-        // เริ่มทำงานตอนเปิดเว็บ
-        window.onload = function () {
+        // 🌐 ดึงเมนูจาก Database โดยตรงผ่าน API
+        async function fetchMenusFromDB() {
+            try {
+                const res = await fetch('/api/menus');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        db.Menu = data.map(m => ({
+                            id: m.id,
+                            "ชื่อเมนู": m.name,
+                            "ราคา": parseFloat(m.price)
+                        }));
+                        saveToLocal();
+                    }
+                }
+            } catch (err) {
+                console.error("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึงเมนูได้:", err);
+            }
+        }
+
+        window.onload = async function () {
             loadFromLocal();
 
             const today = new Date();
@@ -877,12 +630,14 @@
             document.getElementById('filterStartDate').valueAsDate = today;
             document.getElementById('filterEndDate').valueAsDate = today;
 
+            // 🚀 เรียก API ดึงเมนูล่าสุดจาก Database เสมอเมื่อเปิดหน้าเว็บ
+            await fetchMenusFromDB();
+
             renderMenus();
             renderMenuManage();
             updateDashboard();
         };
 
-        // --- ระบบสลับหน้าเว็บ (Tabs) ---
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -894,7 +649,6 @@
             if (tabId === 'menuManageTab') renderMenuManage();
         }
 
-        // --- ฟังก์ชันช่วยเหลือ (Format วันที่/เวลา) ---
         function getTodayStr() {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -905,67 +659,6 @@
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         }
 
-        // --- ระบบ Excel ---
-        function importExcel() {
-            const fileUpload = document.getElementById('excelUpload');
-            if (!fileUpload.files.length) return alert("กรุณาเลือกไฟล์ Excel ก่อน");
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-
-                if (workbook.Sheets['Menu']) db.Menu = XLSX.utils.sheet_to_json(workbook.Sheets['Menu']);
-                if (workbook.Sheets['Orders']) db.Orders = XLSX.utils.sheet_to_json(workbook.Sheets['Orders']);
-                if (workbook.Sheets['Market']) db.Market = XLSX.utils.sheet_to_json(workbook.Sheets['Market']);
-                if (workbook.Sheets['Expenses']) db.Expenses = XLSX.utils.sheet_to_json(workbook.Sheets['Expenses']);
-
-                saveToLocal(); // อัปโหลดเสร็จ ให้จำลง Chrome เลย
-                alert("โหลดข้อมูลสำเร็จ! ระบบจำข้อมูลให้แล้ว");
-                renderMenus();
-                updateDashboard();
-                fileUpload.value = "";
-            };
-            reader.readAsArrayBuffer(fileUpload.files[0]);
-        }
-
-        async function exportExcel() {
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Menu), "Menu");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Orders), "Orders");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Market), "Market");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Expenses), "Expenses");
-
-            const defaultFileName = `ข้อมูลร้าน_${getTodayStr()}.xlsx`;
-
-            // เช็คว่าเบราว์เซอร์รองรับระบบเลือกที่เก็บไฟล์ (Save As) หรือไม่ (Chrome รองรับ)
-            if (window.showSaveFilePicker) {
-                try {
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: defaultFileName,
-                        types: [{
-                            description: 'Excel File',
-                            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
-                        }]
-                    });
-                    const writable = await handle.createWritable();
-                    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-                    await writable.write(excelBuffer);
-                    await writable.close();
-                    alert("บันทึกไฟล์สำเร็จ!");
-                } catch (err) {
-                    // ถ้ากดยกเลิกก็ไม่ต้องทำอะไร แต่ถ้า Error อื่นให้กลับไปใช้แบบโหลดปกติ
-                    if (err.name !== 'AbortError') {
-                        XLSX.writeFile(wb, defaultFileName);
-                    }
-                }
-            } else {
-                // กรณีเปิดในเบราว์เซอร์ที่ไม่รองรับ ให้โหลดลงเครื่องแบบปกติ
-                XLSX.writeFile(wb, defaultFileName);
-            }
-        }
-
-        // --- ระบบหน้าขาย (POS) ---
         function renderMenus() {
             const container = document.getElementById('menuContainer');
             container.innerHTML = '';
@@ -990,7 +683,6 @@
             renderCart();
         }
 
-        // เพิ่มฟังก์ชันสำหรับเพิ่มเมนูแบบ Custom
         function addCustomToCart() {
             const name = document.getElementById('customItemName').value;
             const price = parseFloat(document.getElementById('customItemPrice').value);
@@ -1003,7 +695,6 @@
             document.getElementById('customItemPrice').value = '';
         }
 
-        // ฟังก์ชันสำหรับบันทึกการแก้ไขตอนพิมพ์ทับในตะกร้า
         function updateCartItem(index, field, value) {
             if (field === 'price') {
                 cart[index].price = parseFloat(value) || 0;
@@ -1013,7 +704,6 @@
             renderCart();
         }
 
-        // แก้ไขฟังก์ชัน renderCart เดิม ให้มี input สำหรับพิมพ์แก้ได้
         function renderCart() {
             const tbody = document.getElementById('cartBody');
             tbody.innerHTML = '';
@@ -1047,10 +737,9 @@
             const recordDate = document.getElementById('posDate').value;
             db.Orders.push({ "วันที่": recordDate, "เวลา": getTimeStr(), "รายการ": itemsStr, "ยอดรวม": total });
 
-            saveToLocal(); // บันทึกอัตโนมัติ
+            saveToLocal();
             cart = [];
             renderCart();
-            // ไม่กวนใจด้วย alert แล้ว เพื่อความรวดเร็วในการทำงาน
         }
 
         function addMarketCost() {
@@ -1058,7 +747,7 @@
             if (!cost) return alert("กรุณาใส่ราคา");
             const recordDate = document.getElementById('posDate').value;
             db.Market.push({ "วันที่": recordDate, "ยอดรวม": parseFloat(cost) });
-            saveToLocal(); // บันทึกอัตโนมัติ
+            saveToLocal();
             document.getElementById('marketCost').value = '';
         }
 
@@ -1068,12 +757,11 @@
             if (!name || !cost) return alert("กรุณาใส่ข้อมูลให้ครบ");
             const recordDate = document.getElementById('posDate').value;
             db.Expenses.push({ "วันที่": recordDate, "เวลา": getTimeStr(), "รายการ": name, "ยอดรวม": parseFloat(cost) });
-            saveToLocal(); // บันทึกอัตโนมัติ
+            saveToLocal();
             document.getElementById('expenseName').value = '';
             document.getElementById('expenseCost').value = '';
         }
 
-        // --- ระบบสรุปยอด (Dashboard) ---
         let dashMode = 'daily';
 
         function setDashMode(mode) {
@@ -1084,19 +772,14 @@
                 'range': document.getElementById('btnRange')
             };
 
-            // Reset all buttons
             Object.values(btns).forEach(btn => {
                 btn.style.background = 'transparent';
                 btn.style.color = '#4b5563';
-                btn.style.boxShadow = 'none';
             });
 
-            // Active button
             btns[mode].style.background = 'var(--primary)';
             btns[mode].style.color = 'white';
-            btns[mode].style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
 
-            // Show/Hide filters
             document.getElementById('dailyFilter').style.display = mode === 'daily' ? 'flex' : 'none';
             document.getElementById('monthlyFilter').style.display = mode === 'monthly' ? 'flex' : 'none';
             document.getElementById('rangeFilter').style.display = mode === 'range' ? 'flex' : 'none';
@@ -1108,7 +791,6 @@
             let targetOrders, targetMarket, targetExpenses;
             let displayTitle = "";
 
-            // ใช้ map เพื่อจำ index ดั้งเดิมก่อนทำการ filter จะได้ลบ/แก้ไข ถูกตัว
             if (dashMode === 'daily') {
                 const targetDate = document.getElementById('filterDate').value;
                 targetOrders = db.Orders.map((o, i) => ({ ...o, idx: i })).filter(o => o['วันที่'] === targetDate);
@@ -1147,10 +829,9 @@
             document.getElementById('dashNet').innerText = `${netProfit.toLocaleString()} ฿`;
             document.getElementById('dashOrderTitle').innerText = displayTitle;
 
-            // ฟังก์ชันสร้างปุ่มแก้ไขและลบ
             const actionBtns = (type, idx) => `
             <td style="text-align: center; white-space: nowrap;">
-                <button class="system-btn btn-save" style="padding: 4px 8px; font-size: 12px; display: inline-block; min-height: unset;" onclick="editRecord('${type}', ${idx})">แก้</button>
+                <button class="system-btn btn-save" style="padding: 4px 8px; font-size: 12px; display: inline-block;" onclick="editRecord('${type}', ${idx})">แก้</button>
                 <button class="delete-btn" style="padding: 4px 8px; font-size: 12px; display: inline-block; margin-left: 3px;" onclick="deleteRecord('${type}', ${idx})">ลบ</button>
             </td>`;
 
@@ -1165,20 +846,17 @@
             }
         }
 
-        // --- ฟังก์ชันใหม่: แก้ไขและลบข้อมูล (เอาไปวางต่อจากฟังก์ชัน updateDashboard ได้เลย) ---
         function editRecord(type, index) {
             const record = db[type][index];
             if (!record) return;
 
-            // 1. ถ้าเป็นออเดอร์หรือเบิกเงิน ให้แก้ไขชื่อรายการได้ด้วย
             if (type === 'Orders' || type === 'Expenses') {
-                let newName = prompt(`แก้ไขชื่อรายการ (ถ้าไม่แก้ให้กด OK ผ่านไป):`, record['รายการ']);
+                let newName = prompt(`แก้ไขชื่อรายการ:`, record['รายการ']);
                 if (newName !== null && newName.trim() !== '') {
                     db[type][index]['รายการ'] = newName;
                 }
             }
 
-            // 2. ให้แก้ไขตัวเลขยอดรวม (เหมือนเดิม)
             let newValue = prompt(`แก้ไขยอดรวม (บาท):`, record['ยอดรวม']);
             if (newValue !== null && newValue.trim() !== '' && !isNaN(newValue)) {
                 db[type][index]['ยอดรวม'] = parseFloat(newValue);
@@ -1196,7 +874,6 @@
             }
         }
 
-        // --- ระบบจัดการเมนูในหน้าเว็บ ---
         function renderMenuManage() {
             document.getElementById('menuManageTable').innerHTML = db.Menu.map((item, index) => `
             <tr>
@@ -1207,28 +884,95 @@
         `).join('');
         }
 
-        function addNewMenu() {
-            const name = document.getElementById('newMenuName').value;
-            const price = document.getElementById('newMenuPrice').value;
+        // ➕ เพิ่มเมนูใหม่ส่งตรงเข้า MySQL Database
+        async function addNewMenu() {
+            const name = document.getElementById('newMenuName').value.trim();
+            const price = document.getElementById('newMenuPrice').value.trim();
             if (!name || !price) return alert("กรุณาใส่ชื่อและราคา");
-            db.Menu.push({ "ชื่อเมนู": name, "ราคา": parseFloat(price) });
-            saveToLocal(); // บันทึกอัตโนมัติ
-            document.getElementById('newMenuName').value = '';
-            document.getElementById('newMenuPrice').value = '';
-            renderMenuManage();
-            renderMenus();
+
+            try {
+                const res = await fetch('/api/menus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, price: parseFloat(price), category: 'ทอดเล่น' })
+                });
+
+                if (res.ok) {
+                    await fetchMenusFromDB();
+                    document.getElementById('newMenuName').value = '';
+                    document.getElementById('newMenuPrice').value = '';
+                    renderMenuManage();
+                    renderMenus();
+                    alert("เพิ่มเมนูลง Database สำเร็จ!");
+                } else {
+                    alert("เกิดข้อผิดพลาดในการบันทึกเมนู");
+                }
+            } catch (err) {
+                alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+            }
         }
 
-        function deleteMenu(index) {
-            if (confirm('ต้องการลบเมนูนี้ใช่หรือไม่?')) {
+        // 🗑️ ลบเมนูออกจาก MySQL Database
+        async function deleteMenu(index) {
+            const item = db.Menu[index];
+            if (!item) return;
+
+            if (confirm(`ต้องการลบเมนู "${item['ชื่อเมนู']}" ใช่หรือไม่?`)) {
+                if (item.id) {
+                    try {
+                        const res = await fetch(`/api/menus/${item.id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            await fetchMenusFromDB();
+                            renderMenuManage();
+                            renderMenus();
+                            return;
+                        }
+                    } catch (err) {
+                        console.error("ลบเมนูไม่สำเร็จ:", err);
+                    }
+                }
+                
                 db.Menu.splice(index, 1);
-                saveToLocal(); // บันทึกอัตโนมัติ
+                saveToLocal();
                 renderMenuManage();
                 renderMenus();
             }
         }
-    </script>
 
+        function importExcel() {
+            const fileUpload = document.getElementById('excelUpload');
+            if (!fileUpload.files.length) return alert("กรุณาเลือกไฟล์ Excel ก่อน");
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                if (workbook.Sheets['Menu']) db.Menu = XLSX.utils.sheet_to_json(workbook.Sheets['Menu']);
+                if (workbook.Sheets['Orders']) db.Orders = XLSX.utils.sheet_to_json(workbook.Sheets['Orders']);
+                if (workbook.Sheets['Market']) db.Market = XLSX.utils.sheet_to_json(workbook.Sheets['Market']);
+                if (workbook.Sheets['Expenses']) db.Expenses = XLSX.utils.sheet_to_json(workbook.Sheets['Expenses']);
+
+                saveToLocal();
+                alert("โหลดข้อมูลสำเร็จ!");
+                renderMenus();
+                updateDashboard();
+                fileUpload.value = "";
+            };
+            reader.readAsArrayBuffer(fileUpload.files[0]);
+        }
+
+        async function exportExcel() {
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Menu), "Menu");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Orders), "Orders");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Market), "Market");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.Expenses), "Expenses");
+
+            const defaultFileName = `ข้อมูลร้าน_${getTodayStr()}.xlsx`;
+            XLSX.writeFile(wb, defaultFileName);
+        }
+    </script>
 </body>
 
 </html>
